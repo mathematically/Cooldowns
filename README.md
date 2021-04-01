@@ -1,0 +1,2 @@
+# Cooldowns
+Simple keyboard cooldowns
