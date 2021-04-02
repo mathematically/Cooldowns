@@ -1,0 +1,35 @@
+﻿<Window x:Class="Cooldowns.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:b="http://schemas.microsoft.com/xaml/behaviors"
+        xmlns:behaviours="clr-namespace:Cooldowns.Behaviours"
+        mc:Ignorable="d"
+        WindowStyle="None"
+        SizeToContent="WidthAndHeight"
+        Background="Transparent"
+        AllowsTransparency="True"
+        WindowStartupLocation="Manual"
+        Title="Cooldowns"
+        Loaded="OnLoaded"
+        Closed="OnClosed">
+    <b:Interaction.Behaviors>
+        <behaviours:AlwaysOnTopBehavior/>
+    </b:Interaction.Behaviors>
+    <Window.Resources>
+        <Style TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="Black" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="Black" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="32" />
+        </Style>
+    </Window.Resources>
+    <UniformGrid Rows="1" Margin="0">
+        <Button Name="ButtonQ" Content="Q" />
+        <Button Name="ButtonW" Content="W" />
+        <Button Name="ButtonE" Content="E" />
+        <Button Name="ButtonR" Content="R" />
+    </UniformGrid>
+</Window>
