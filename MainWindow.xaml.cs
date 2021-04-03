@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Automation;
 using WindowsInput.Native;
+using Cooldowns.Domain;
 using Cooldowns.Keyboard;
 using NLog;
 using NLog.Config;
@@ -32,10 +33,22 @@ namespace Cooldowns
 
         private readonly Win32KeyboardListener keyboardListener;
 
-        private ButtonCooldownTimer buttonTimerQ;
-        private ButtonCooldownTimer buttonTimerW;
-        private ButtonCooldownTimer buttonTimerE;
-        private ButtonCooldownTimer buttonTimerR;
+        // ReSharper disable InconsistentNaming
+        private readonly ButtonCooldownTimer Q;
+        private readonly ButtonCooldownTimer W;
+        private readonly ButtonCooldownTimer E;
+        private readonly ButtonCooldownTimer R;
+        // ReSharper enable InconsistentNaming
+
+        private enum AppState
+        {
+            Off, On
+        }
+
+        private AppState state = AppState.On;
+
+        private bool IsOff() => state == AppState.Off;
+        private bool IsOn() => state == AppState.On;
 
         public MainWindow()
         {
@@ -43,6 +56,11 @@ namespace Cooldowns
             ConfigureLogging();
             
             keyboardListener = new Win32KeyboardListener();
+            
+            Q = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonQ, 1900);
+            W = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonW, 5200);
+            E = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonE, 3700);
+            R = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonR, 1000, CooldownButtonState.Disabled);
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -52,21 +70,7 @@ namespace Cooldowns
             keyboardListener.OnKeyPressed += OnKeyPressed;
             keyboardListener.HookKeyboard();
             
-            //Automation.AddAutomationFocusChangedEventHandler(OnFocusChanged);
-
-            buttonTimerQ = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonQ, 1900);
-            buttonTimerW = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonW, 5200);
-            buttonTimerE = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonE, 3700);
-            buttonTimerR = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonR, 1000);
-
-            ButtonQ.Visibility = Visibility.Visible;
-            ButtonQ.IsEnabled = true;
-            ButtonW.Visibility = Visibility.Visible;
-            ButtonW.IsEnabled = true;
-            ButtonE.Visibility = Visibility.Visible;
-            ButtonE.IsEnabled = true;
-            ButtonR.Visibility = Visibility.Hidden;
-            ButtonR.IsEnabled = false;
+            Automation.AddAutomationFocusChangedEventHandler(OnFocusChanged);
         }
 
         private void ResetWindowPosition()
@@ -84,17 +88,17 @@ namespace Cooldowns
             var processName = process.ProcessName;
             
             log.Debug("Focus changed " + processName);
-            if (processName.Contains("Poet") || processName.Contains("dotnet")) return;
+            if (processName.Contains("Cooldowns") || processName.Contains("dotnet")) return;
             
             Application.Current?.Dispatcher?.Invoke(() =>
             {
                 if (processName.Contains("Epoch"))
                 {
-                    // Enable
+                    SetOn();
                 }
                 else
                 {
-                    // Disable
+                    SetOff();
                 }
             });
         }
@@ -112,59 +116,6 @@ namespace Cooldowns
             ProcessKeys(e);
         }
 
-        private void ProcessKeys(KeyPressArgs e)
-        {
-            // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
-            switch (e.KeyCode)
-            {
-                case VirtualKeyCode.PAUSE:
-                    ToggleEnabled();
-                    break;
-                
-                case VirtualKeyCode.SCROLL:
-                    Application.Current.Shutdown();
-                    break;
-                
-                case VirtualKeyCode.VK_Q:
-                    if (ButtonQ.IsEnabled && ButtonQ.Visibility == Visibility.Visible)
-                    {
-                        buttonTimerQ.Start();
-                    }
-                    break;
-                
-                case VirtualKeyCode.VK_W:
-                    if (ButtonW.IsEnabled && ButtonW.Visibility == Visibility.Visible)
-                    {
-                        buttonTimerW.Start();
-                    }
-                    break;
-                
-                case VirtualKeyCode.VK_E:
-                    if (ButtonE.IsEnabled && ButtonE.Visibility == Visibility.Visible)
-                    {
-                        buttonTimerE.Start();
-                    }
-                    break;
-                
-                case VirtualKeyCode.VK_R:
-                    if (ButtonR.IsEnabled && ButtonR.Visibility == Visibility.Visible)
-                    {
-                        buttonTimerR.Start();
-                    }
-                    break;
-            }
-        }
-
-        private enum AppState
-        {
-            Off, On
-        }
-
-        private AppState state = AppState.On;
-
-        private bool IsOff() => state == AppState.Off;
-        private bool IsOn() => state == AppState.On;
-        
         private void ToggleEnabled()
         {
             if (IsOff())
@@ -189,12 +140,36 @@ namespace Cooldowns
             Visibility = Visibility.Collapsed;
         }
 
-        private void ShowReady()
+
+        private void ProcessKeys(KeyPressArgs e)
         {
-        }
-        
-        private void ShowOnCooldown()
-        {
+            // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
+            switch (e.KeyCode)
+            {
+                case VirtualKeyCode.PAUSE:
+                    ToggleEnabled();
+                    break;
+                
+                case VirtualKeyCode.SCROLL:
+                    Application.Current.Shutdown();
+                    break;
+                
+                case VirtualKeyCode.VK_Q:
+                    Q.Start();
+                    break;
+                
+                case VirtualKeyCode.VK_W:
+                    W.Start();
+                    break;
+                
+                case VirtualKeyCode.VK_E:
+                    E.Start();
+                    break;
+                
+                case VirtualKeyCode.VK_R:
+                    R.Start();
+                    break;
+            }
         }
 
         private void OnClosed(object? sender, EventArgs e)
