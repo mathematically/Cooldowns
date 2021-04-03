@@ -2,13 +2,11 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Automation;
-using System.Windows.Controls;
 using WindowsInput.Native;
 using Cooldowns.Keyboard;
 using NLog;
 using NLog.Config;
 using NLog.Targets;
-using System.Threading;
 
 namespace Cooldowns
 {

@@ -19,14 +19,17 @@
     </b:Interaction.Behaviors>
     <Window.Resources>
         <Style TargetType="{x:Type Button}">
-            <Setter Property="Background" Value="Black" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="BorderBrush" Value="Black" />
+            <Setter Property="Background" Value="DarkGoldenrod" />
+            <Setter Property="Foreground" Value="#202424" />
+            <Setter Property="BorderBrush" Value="#202424" />
+            <Setter Property="Width" Value="{Binding RelativeSource={x:Static RelativeSource.Self}, Path=ActualHeight}" />
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="FontSize" Value="32" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="0" />
         </Style>
     </Window.Resources>
-    <UniformGrid Rows="1" Margin="0">
+    <UniformGrid Rows="1">
         <Button Name="ButtonQ" Content="Q" />
         <Button Name="ButtonW" Content="W" />
         <Button Name="ButtonE" Content="E" />
