@@ -146,14 +146,6 @@ namespace Cooldowns
             // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
             switch (e.KeyCode)
             {
-                case VirtualKeyCode.PAUSE:
-                    ToggleEnabled();
-                    break;
-                
-                case VirtualKeyCode.SCROLL:
-                    Application.Current.Shutdown();
-                    break;
-                
                 case VirtualKeyCode.VK_Q:
                     Q.Start();
                     break;
@@ -168,6 +160,10 @@ namespace Cooldowns
                 
                 case VirtualKeyCode.VK_R:
                     R.Start();
+                    break;
+                
+                case VirtualKeyCode.SCROLL:
+                    Application.Current.Shutdown();
                     break;
             }
         }

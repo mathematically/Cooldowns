@@ -17,7 +17,7 @@ namespace Cooldowns.Domain
         private readonly int cooldownMs;
         private Timer? timer;
 
-        private CooldownButtonState ButtonState { get; }
+        private CooldownButtonState buttonState;
 
         public ButtonCooldownTimer(Dispatcher dispatcher, Button button, int cooldownMs, CooldownButtonState buttonState = CooldownButtonState.Up)
         {
@@ -25,13 +25,12 @@ namespace Cooldowns.Domain
             this.button = button;
             this.cooldownMs = cooldownMs;
 
-            ButtonState = buttonState;
-            SetButtonState();
+            SetButtonState(buttonState);
         }
 
-        private void SetButtonState()
+        private void SetButtonState(CooldownButtonState updatedState)
         {
-            switch (ButtonState)
+            switch (updatedState)
             {
                 case CooldownButtonState.Disabled:
                     ShowDisabled();
@@ -43,8 +42,10 @@ namespace Cooldowns.Domain
                     ShowReady();
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(ButtonState), ButtonState, null);
+                    throw new ArgumentOutOfRangeException(nameof(this.buttonState), this.buttonState, null);
             }
+            
+            buttonState = updatedState;
         }
 
         private void ShowDisabled()
@@ -54,10 +55,10 @@ namespace Cooldowns.Domain
 
         private void ShowCooldown()
         {
-            button.Visibility = Visibility.Visible;
+            button.Visibility = Visibility.Hidden;
             button.Background = ForegroundBrush;
             button.Foreground = BackgroundBrush;
-            button.BorderBrush = BackgroundBrush;
+            button.BorderBrush = ForegroundBrush;
         }
 
         private void ShowReady()
@@ -70,18 +71,21 @@ namespace Cooldowns.Domain
         
         public void Start()
         {
-            if (ButtonState != CooldownButtonState.Up) return;
+            if (buttonState != CooldownButtonState.Up) return;
             
+            SetButtonState(CooldownButtonState.OnCooldown);
             timer = new Timer(CooldownEnded, button, cooldownMs, Timeout.Infinite);
-            ShowCooldown();
         }
         
         private void CooldownEnded(object? state)
         {
             timer?.Dispose();
             timer = null;
-            dispatcher.BeginInvoke(ShowReady);
+            
+            dispatcher.BeginInvoke(() =>
+            {
+                SetButtonState(CooldownButtonState.Up);
+            });
         }
-
     }
 }
