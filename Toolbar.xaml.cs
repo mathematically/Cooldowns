@@ -5,6 +5,7 @@ using System.Windows.Automation;
 using WindowsInput.Native;
 using Cooldowns.Domain;
 using Cooldowns.Keyboard;
+using Microsoft.Extensions.Options;
 using NLog;
 using NLog.Config;
 using NLog.Targets;
@@ -14,7 +15,7 @@ namespace Cooldowns
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class Toolbar : Window
     {
         private readonly Logger log = LogManager.GetCurrentClassLogger();
 
@@ -50,17 +51,22 @@ namespace Cooldowns
         private bool IsOff() => state == AppState.Off;
         private bool IsOn() => state == AppState.On;
 
-        public MainWindow()
+        public Toolbar(IOptions<CooldownsConfiguration> configuration)
         {
             InitializeComponent();
             ConfigureLogging();
             
             keyboardListener = new Win32KeyboardListener();
-            
-            Q = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonQ, 1900);
-            W = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonW, 5200);
-            E = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonE, 3700);
-            R = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonR, 1000, CooldownButtonState.Disabled);
+
+            Q = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonQ, configuration.Value.Q);
+            W = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonW, configuration.Value.W);
+            E = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonE, configuration.Value.E);
+            R = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonR, configuration.Value.R);
+
+            ButtonQ.FontSize = configuration.Value.FontSize;
+            ButtonW.FontSize = configuration.Value.FontSize;
+            ButtonE.FontSize = configuration.Value.FontSize;
+            ButtonR.FontSize = configuration.Value.FontSize;
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)

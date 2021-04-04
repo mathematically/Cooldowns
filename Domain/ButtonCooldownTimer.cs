@@ -15,17 +15,17 @@ namespace Cooldowns.Domain
         private readonly Dispatcher dispatcher;
         private readonly Button button;
         private readonly int cooldownMs;
-        private Timer? timer;
 
         private CooldownButtonState buttonState;
+        private Timer? timer;
 
-        public ButtonCooldownTimer(Dispatcher dispatcher, Button button, int cooldownMs, CooldownButtonState buttonState = CooldownButtonState.Up)
+        public ButtonCooldownTimer(Dispatcher dispatcher, Button button, int cooldownMs)
         {
             this.dispatcher = dispatcher;
             this.button = button;
             this.cooldownMs = cooldownMs;
 
-            SetButtonState(buttonState);
+            SetButtonState(cooldownMs == 0 ? CooldownButtonState.Disabled : CooldownButtonState.Up);
         }
 
         private void SetButtonState(CooldownButtonState updatedState)
