@@ -5,10 +5,8 @@ using System.Windows.Automation;
 using WindowsInput.Native;
 using Cooldowns.Domain;
 using Cooldowns.Keyboard;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NLog;
-using NLog.Config;
-using NLog.Targets;
 
 namespace Cooldowns
 {
@@ -17,20 +15,20 @@ namespace Cooldowns
     /// </summary>
     public partial class Toolbar : Window
     {
-        private readonly Logger log = LogManager.GetCurrentClassLogger();
+        private readonly ILogger<Toolbar> logger;
 
-        private static void ConfigureLogging()
-        {
-            var config = new LoggingConfiguration();
-            
-            var fileTarget = new FileTarget("logfile") {FileName = "logs.txt", DeleteOldFileOnStartup = true};
-            var consoleTarget = new ConsoleTarget("logconsole");
-
-            config.AddRule(LogLevel.Info, LogLevel.Fatal, consoleTarget);
-            config.AddRule(LogLevel.Debug, LogLevel.Fatal, fileTarget);
-
-            LogManager.Configuration = config;
-        }
+        // private static void ConfigureLogging()
+        // {
+        //     var config = new LoggingConfiguration();
+        //     
+        //     var fileTarget = new FileTarget("logfile") {FileName = "logs.txt", DeleteOldFileOnStartup = true};
+        //     var consoleTarget = new ConsoleTarget("logconsole");
+        //
+        //     config.AddRule(LogLevel.Info, LogLevel.Fatal, consoleTarget);
+        //     config.AddRule(LogLevel.Debug, LogLevel.Fatal, fileTarget);
+        //
+        //     LogManager.Configuration = config;
+        // }
 
         private readonly Win32KeyboardListener keyboardListener;
 
@@ -51,22 +49,23 @@ namespace Cooldowns
         private bool IsOff() => state == AppState.Off;
         private bool IsOn() => state == AppState.On;
 
-        public Toolbar(IOptions<CooldownsConfiguration> configuration)
+        public Toolbar(ILogger<Toolbar> logger, IOptions<AppConfiguration> configuration)
         {
+            this.logger = logger;
             InitializeComponent();
-            ConfigureLogging();
+            //ConfigureLogging();
             
             keyboardListener = new Win32KeyboardListener();
 
-            Q = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonQ, configuration.Value.Q);
-            W = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonW, configuration.Value.W);
-            E = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonE, configuration.Value.E);
-            R = new ButtonCooldownTimer(Application.Current.Dispatcher, ButtonR, configuration.Value.R);
+            Q = new ButtonCooldownTimer(logger, Application.Current.Dispatcher, ButtonQ, configuration.Value.Q);
+            W = new ButtonCooldownTimer(logger, Application.Current.Dispatcher, ButtonW, configuration.Value.W);
+            E = new ButtonCooldownTimer(logger, Application.Current.Dispatcher, ButtonE, configuration.Value.E);
+            R = new ButtonCooldownTimer(logger, Application.Current.Dispatcher, ButtonR, configuration.Value.R);
 
-            ButtonQ.FontSize = configuration.Value.FontSize;
-            ButtonW.FontSize = configuration.Value.FontSize;
-            ButtonE.FontSize = configuration.Value.FontSize;
-            ButtonR.FontSize = configuration.Value.FontSize;
+            ButtonQ.FontSize = configuration.Value.Toolbar.FontSize;
+            ButtonW.FontSize = configuration.Value.Toolbar.FontSize;
+            ButtonE.FontSize = configuration.Value.Toolbar.FontSize;
+            ButtonR.FontSize = configuration.Value.Toolbar.FontSize;
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -93,7 +92,7 @@ namespace Cooldowns
             using var process = Process.GetProcessById(focusedElement.Current.ProcessId);
             var processName = process.ProcessName;
             
-            log.Debug("Focus changed " + processName);
+            logger.LogDebug($"Focus changed {processName}");
             if (processName.Contains("Cooldowns") || processName.Contains("dotnet")) return;
             
             Application.Current?.Dispatcher?.Invoke(() =>
@@ -153,19 +152,19 @@ namespace Cooldowns
             switch (e.KeyCode)
             {
                 case VirtualKeyCode.VK_Q:
-                    Q.Start();
+                    Q.Press();
                     break;
                 
                 case VirtualKeyCode.VK_W:
-                    W.Start();
+                    W.Press();
                     break;
                 
                 case VirtualKeyCode.VK_E:
-                    E.Start();
+                    E.Press();
                     break;
                 
                 case VirtualKeyCode.VK_R:
-                    R.Start();
+                    R.Press();
                     break;
                 
                 case VirtualKeyCode.SCROLL:

@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using Cooldowns.Domain;
 using Microsoft.Extensions.Configuration;
@@ -16,6 +11,9 @@ namespace Cooldowns
     {
         private readonly IHost host;
  
+        // This is all completely pointless in the context of this app, but I have not written WPF
+        // since .NET Core came about so I wanted to play with this stuff.
+        
         public App()
         {
             host = Host.CreateDefaultBuilder()
@@ -32,7 +30,7 @@ namespace Cooldowns
  
         private void ConfigureServices(IConfiguration configuration, IServiceCollection services)
         {
-            services.Configure<CooldownsConfiguration>(configuration);
+            services.Configure<AppConfiguration>(configuration);
             services.AddSingleton<Toolbar>();
         }
  

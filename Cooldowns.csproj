@@ -11,7 +11,6 @@
       <PackageReference Include="InputSimulatorCore" Version="1.0.5" />
       <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0-preview.2.21154.6" />
       <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.31" />
-      <PackageReference Include="NLog" Version="4.7.9" />
     </ItemGroup>
 
     <ItemGroup>
