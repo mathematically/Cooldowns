@@ -5,8 +5,10 @@ using System.Windows.Automation;
 using WindowsInput.Native;
 using Cooldowns.Domain;
 using Cooldowns.Keyboard;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NLog;
+using NLog.Config;
+using NLog.Targets;
 
 namespace Cooldowns
 {
@@ -15,28 +17,28 @@ namespace Cooldowns
     /// </summary>
     public partial class Toolbar : Window
     {
-        private readonly ILogger<Toolbar> logger;
+        private readonly Logger log = LogManager.GetCurrentClassLogger();
 
-        // private static void ConfigureLogging()
-        // {
-        //     var config = new LoggingConfiguration();
-        //     
-        //     var fileTarget = new FileTarget("logfile") {FileName = "logs.txt", DeleteOldFileOnStartup = true};
-        //     var consoleTarget = new ConsoleTarget("logconsole");
-        //
-        //     config.AddRule(LogLevel.Info, LogLevel.Fatal, consoleTarget);
-        //     config.AddRule(LogLevel.Debug, LogLevel.Fatal, fileTarget);
-        //
-        //     LogManager.Configuration = config;
-        // }
+        private static void ConfigureLogging()
+        {
+            var config = new LoggingConfiguration();
+            
+            var fileTarget = new FileTarget("logfile") {FileName = "logs.txt", DeleteOldFileOnStartup = true};
+            var consoleTarget = new ConsoleTarget("logconsole");
 
+            config.AddRule(LogLevel.Info, LogLevel.Fatal, consoleTarget);
+            config.AddRule(LogLevel.Debug, LogLevel.Fatal, fileTarget);
+
+            LogManager.Configuration = config;
+        }
+        
         private readonly Win32KeyboardListener keyboardListener;
 
         // ReSharper disable InconsistentNaming
-        private readonly ButtonCooldownTimer Q;
-        private readonly ButtonCooldownTimer W;
-        private readonly ButtonCooldownTimer E;
-        private readonly ButtonCooldownTimer R;
+        private readonly CooldownButton Q;
+        private readonly CooldownButton W;
+        private readonly CooldownButton E;
+        private readonly CooldownButton R;
         // ReSharper enable InconsistentNaming
 
         private enum AppState
@@ -48,24 +50,32 @@ namespace Cooldowns
 
         private bool IsOff() => state == AppState.Off;
         private bool IsOn() => state == AppState.On;
+        private double PosX { get; set; }
+        private double PosY { get; set; }
 
-        public Toolbar(ILogger<Toolbar> logger, IOptions<AppConfiguration> configuration)
+        public Toolbar(IOptions<Configuration.App> configuration)
         {
-            this.logger = logger;
             InitializeComponent();
-            //ConfigureLogging();
+            ConfigureLogging();
             
             keyboardListener = new Win32KeyboardListener();
 
-            Q = new ButtonCooldownTimer(logger, Application.Current.Dispatcher, ButtonQ, configuration.Value.Q);
-            W = new ButtonCooldownTimer(logger, Application.Current.Dispatcher, ButtonW, configuration.Value.W);
-            E = new ButtonCooldownTimer(logger, Application.Current.Dispatcher, ButtonE, configuration.Value.E);
-            R = new ButtonCooldownTimer(logger, Application.Current.Dispatcher, ButtonR, configuration.Value.R);
+            Q = new CooldownButton(Application.Current.Dispatcher, ButtonQ, configuration.Value.Q);
+            W = new CooldownButton(Application.Current.Dispatcher, ButtonW, configuration.Value.W);
+            E = new CooldownButton(Application.Current.Dispatcher, ButtonE, configuration.Value.E);
+            R = new CooldownButton(Application.Current.Dispatcher, ButtonR, configuration.Value.R);
 
+            ButtonQ.Content = configuration.Value.Q.Label;
             ButtonQ.FontSize = configuration.Value.Toolbar.FontSize;
+            ButtonW.Content = configuration.Value.W.Label;
             ButtonW.FontSize = configuration.Value.Toolbar.FontSize;
+            ButtonE.Content = configuration.Value.E.Label;
             ButtonE.FontSize = configuration.Value.Toolbar.FontSize;
+            ButtonR.Content = configuration.Value.R.Label;
             ButtonR.FontSize = configuration.Value.Toolbar.FontSize;
+
+            PosX = configuration.Value.Toolbar.PosX;
+            PosY = configuration.Value.Toolbar.PosY;
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -80,8 +90,8 @@ namespace Cooldowns
 
         private void ResetWindowPosition()
         {
-            Left = SystemParameters.PrimaryScreenWidth * 0.5 - Width * 0.5;
-            Top = SystemParameters.FullPrimaryScreenHeight * 0.28 - Height * 0.5;
+            Left = SystemParameters.PrimaryScreenWidth * PosX - Width * 0.5;
+            Top = SystemParameters.FullPrimaryScreenHeight * PosY - Height * 0.5;
         }
 
         private void OnFocusChanged(object sender, AutomationFocusChangedEventArgs e)
@@ -92,7 +102,7 @@ namespace Cooldowns
             using var process = Process.GetProcessById(focusedElement.Current.ProcessId);
             var processName = process.ProcessName;
             
-            logger.LogDebug($"Focus changed {processName}");
+            log.Debug($"Focus changed {processName}");
             if (processName.Contains("Cooldowns") || processName.Contains("dotnet")) return;
             
             Application.Current?.Dispatcher?.Invoke(() =>

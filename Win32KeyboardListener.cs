@@ -3,6 +3,9 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using WindowsInput.Native;
 using Cooldowns.Keyboard;
+#pragma warning disable 8604
+#pragma warning disable 8602
+#pragma warning disable 8600
 
 namespace Cooldowns
 {
@@ -29,16 +32,14 @@ namespace Cooldowns
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
 
-        public event EventHandler<KeyPressArgs> OnKeyPressed;
-        public event EventHandler<KeyPressArgs> OnKeyReleased;
+        public event EventHandler<KeyPressArgs> OnKeyPressed = null!;
+        public event EventHandler<KeyPressArgs> OnKeyReleased = null!;
 
         private delegate IntPtr LowLevelKeyboardCallback(int nCode, IntPtr wParam, IntPtr lParam);
         private readonly LowLevelKeyboardCallback callback;
         private IntPtr callbackId = IntPtr.Zero;
-        public Win32KeyboardListener()
-        {
-            callback = Callback;
-        }
+        
+        public Win32KeyboardListener() => callback = Callback;
 
         public bool IsHooked() => callbackId != IntPtr.Zero;
         public void HookKeyboard()

@@ -12,11 +12,6 @@ namespace Cooldowns.Domain
             inputSimulator = new InputSimulator();
         }
 
-        public void Type(string text)
-        {
-            inputSimulator.Keyboard.TextEntry(text);
-        }
-
         public void PressKey(VirtualKeyCode key, int delay = 15)
         {
             inputSimulator
