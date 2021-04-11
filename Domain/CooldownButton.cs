@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using WindowsInput.Native;
 using Cooldowns.Configuration;
+using Cooldowns.Keyboard;
 using NLog;
 
 namespace Cooldowns.Domain

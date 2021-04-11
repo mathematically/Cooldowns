@@ -1,7 +1,7 @@
 using WindowsInput;
 using WindowsInput.Native;
 
-namespace Cooldowns.Domain
+namespace Cooldowns.Keyboard
 {
     public class KeyboardSimulator
     {
