@@ -4,6 +4,7 @@ using System;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input.Manipulations;
 using System.Windows.Media;
 using System.Windows.Threading;
 using WindowsInput.Native;
@@ -137,13 +138,18 @@ namespace Cooldowns.Domain
                 }
                 else
                 {
-                    timer?.Dispose();
-                    timer = null;
+                    Unload();
 
                     log.Debug($"Button {button.Content} back up");
                     SetButtonState(CooldownButtonState.Up);
                 }
             });
+        }
+
+        public void Unload()
+        {
+            timer?.Dispose();
+            timer = null;
         }
     }
 }

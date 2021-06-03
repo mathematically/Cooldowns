@@ -103,7 +103,7 @@ namespace Cooldowns
             var processName = process.ProcessName;
             
             log.Debug($"Focus changed {processName}");
-            if (processName.Contains("Cooldowns") || processName.Contains("dotnet")) return;
+            if (processName.Contains("Cooldowns")) return;
             
             Application.Current?.Dispatcher?.Invoke(() =>
             {
@@ -185,6 +185,15 @@ namespace Cooldowns
 
         private void OnClosed(object? sender, EventArgs e)
         {
+            Q.Unload();
+            W.Unload();
+            E.Unload();
+            R.Unload();
+            
+            Automation.RemoveAutomationFocusChangedEventHandler(OnFocusChanged);
+            
+            keyboardListener.UnHookKeyboard();
+            keyboardListener.OnKeyPressed -= OnKeyPressed;
         }
     }
 }
