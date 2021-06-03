@@ -8,6 +8,9 @@ namespace Cooldowns.Configuration
         public string Label { get; set; } = null!;
         public bool Enabled { get; set; }
         public int Cooldown { get; set; }
+        public bool AutoDetectCooldown { get; set; }
+        public int DetectX { get; set; }
+        public int DetectY { get; set; }
         public bool Autocast { get; set; }
         public string AutocastKey { get; set; } = null!;
     }

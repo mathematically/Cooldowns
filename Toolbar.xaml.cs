@@ -185,10 +185,10 @@ namespace Cooldowns
 
         private void OnClosed(object? sender, EventArgs e)
         {
-            Q.Unload();
-            W.Unload();
-            E.Unload();
-            R.Unload();
+            Q.UnloadTimer();
+            W.UnloadTimer();
+            E.UnloadTimer();
+            R.UnloadTimer();
             
             Automation.RemoveAutomationFocusChangedEventHandler(OnFocusChanged);
             
