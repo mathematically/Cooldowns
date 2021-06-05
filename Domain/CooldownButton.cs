@@ -23,8 +23,10 @@ namespace Cooldowns.Domain
         
         private static Brush ForegroundBrush => new SolidColorBrush(Color.FromRgb(32, 36, 36));
         private static Brush BackgroundBrush => Brushes.DarkGoldenrod;
-        private static Brush BackgroundToggledBrush => Brushes.Aqua;
 
+        private const int AutoCheckInterval = 100;
+        private const int AutoCheckDelay = 1000;
+        
         private readonly Dispatcher dispatcher;
         private readonly Button button;
         private readonly Key keyConfig;
@@ -51,7 +53,7 @@ namespace Cooldowns.Domain
             if (keyConfig.AutoDetectCooldown)
             {
                 log.Debug($"Key {this.button.Content} will auto detect cooldonws based on screen pixels");
-                timer = CreateTimer(100, 500);
+                timer = CreateTimer(AutoCheckInterval, AutoCheckDelay);
             }
 
             SetButtonState(keyConfig.Enabled ? CooldownButtonState.Up : CooldownButtonState.Disabled);
@@ -75,9 +77,6 @@ namespace Cooldowns.Domain
                     break;
                 case CooldownButtonState.Up:
                     ShowReady();
-                    break;
-                case CooldownButtonState.ToggledOn:
-                    ShowToggled();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(updatedState), updatedState, null);
@@ -108,19 +107,8 @@ namespace Cooldowns.Domain
             button.BorderBrush = ForegroundBrush;
         }
         
-        private void ShowToggled()
-        {
-            log.Debug($"Button {button.Content} ready.");
-            button.Visibility = Visibility.Visible;
-            
-            button.Background = BackgroundToggledBrush;
-            button.Foreground = ForegroundBrush;
-            button.BorderBrush = ForegroundBrush;
-        }
-        
         public void Press()
         {
-            log.Debug($"Button {button.Content} pressed.");
             if (buttonState == CooldownButtonState.Disabled || keyConfig.AutoDetectCooldown) return;
 
             switch (keyConfig.Autocast)
@@ -128,19 +116,21 @@ namespace Cooldowns.Domain
                 case true when buttonState == CooldownButtonState.AutoCasting:
                     log.Debug($"Auto cast stopped for {button.Content} will be disabled on next timer end.");
                     SetButtonState(CooldownButtonState.OnCooldown);
+                    
                     break;
                 
                 case true when buttonState == CooldownButtonState.Up:
-                    log.Debug($"Enabling auto cast for {button.Content} as {autocastKeyCode}");
+                    log.Debug($"Enabling auto cast for {button.Content} as {autocastKeyCode}.");
                     timer = CreateTimer(keyConfig.Cooldown, keyConfig.Cooldown);
                     SetButtonState(CooldownButtonState.AutoCasting);
+                    
                     break;
                 
                 default:
                 {
                     if (buttonState == CooldownButtonState.Up)
                     {
-                        log.Debug($"Creating one shot timer for {button.Content}");
+                        log.Debug($"Creating one shot timer for {button.Content}.");
                         timer = CreateTimer(Timeout.Infinite, keyConfig.Cooldown);
                         SetButtonState(CooldownButtonState.OnCooldown);
                     }
@@ -148,7 +138,6 @@ namespace Cooldowns.Domain
                     break;
                 }
             }
-            
         }
         
         private void OnCooldownEnded(object? state)
@@ -157,70 +146,67 @@ namespace Cooldowns.Domain
             {
                 if (keyConfig.AutoDetectCooldown)
                 {
-                    var pixel = ScreenPixel.GetColor(keyConfig.DetectX, keyConfig.DetectY);
-                    var isAvailable = IsSkillAvailable(pixel);
-                    var isOnCooldown = IsSkillOnCooldown(pixel);
-                    
-                    if (isAvailable && buttonState == CooldownButtonState.OnCooldown)
-                    {
-                        log.Debug($"{button.Content} now available {pixel}");
-                        OnButtonAvailable();
-                    }
-                    else if (isOnCooldown && buttonState is CooldownButtonState.Up or CooldownButtonState.ToggledOn)
-                    {
-                        log.Debug($"{button.Content} now on cooldown {pixel}");
-                        OnButtonOnCooldown();
-                    }
-                    else if (!isAvailable && !isOnCooldown && buttonState == CooldownButtonState.Up)
-                    {
-                        log.Debug($"{button.Content} has been toggled on {pixel}");
-                        OnButtonToggleOn();
-                    }
+                    ProcessAutoDetectCooldown();
                 }
                 else
                 {
-                    log.Debug($"Cooldown ended for {button.Content}");
-                    if (buttonState == CooldownButtonState.AutoCasting)
-                    {
-                        log.Debug($"Autocasting {autocastKeyCode} from button {button.Content}");
-                        keyboard.PressKey(autocastKeyCode);
-                    }
-                    else
-                    {
-                        OnButtonAvailable();
-                    }
-                }
-
-                void OnButtonOnCooldown()
-                {
-                    log.Debug($"Button {button.Content} on cooldown");
-                    if (!keyConfig.AutoDetectCooldown)
-                    {
-                        UnloadTimer();
-                    }
-                    SetButtonState(CooldownButtonState.OnCooldown);
-                }
-                
-                void OnButtonAvailable()
-                {
-                    log.Debug($"Button {button.Content} back up");
-                    if (!keyConfig.AutoDetectCooldown)
-                    {
-                        UnloadTimer();
-                    }
-                    SetButtonState(CooldownButtonState.Up);
-                }
-                
-                void OnButtonToggleOn()
-                {
-                    log.Debug($"Button {button.Content} toggled on");
-                    if (!keyConfig.AutoDetectCooldown)
-                    {
-                        UnloadTimer();
-                    }
-                    SetButtonState(CooldownButtonState.ToggledOn);
+                    ProcessCooldown();
                 }
             });
+        }
+
+        private void ProcessAutoDetectCooldown()
+        {
+            var pixel = ScreenPixel.GetColor(keyConfig.DetectX, keyConfig.DetectY);
+            
+            var isAvailable = IsSkillAvailable(pixel);
+            var isOnCooldown = IsSkillOnCooldown(pixel);
+
+            if (isAvailable && buttonState == CooldownButtonState.OnCooldown)
+            {
+                OnButtonAvailable();
+            }
+            else if (isOnCooldown && buttonState is CooldownButtonState.Up)
+            {
+                OnButtonOnCooldown();
+            }
+            else if (!isAvailable && !isOnCooldown && buttonState is CooldownButtonState.Up)
+            {
+                log.Debug($"{button.Content} has been toggled on {pixel}");
+                OnButtonOnCooldown();
+            }
+        }
+
+        private void ProcessCooldown()
+        {
+            if (buttonState == CooldownButtonState.AutoCasting)
+            {
+                keyboard.PressKey(autocastKeyCode);
+            }
+            else
+            {
+                OnButtonAvailable();
+            }
+        }
+
+        void OnButtonOnCooldown()
+        {
+            log.Debug($"Button {button.Content} on cooldown");
+            if (!keyConfig.AutoDetectCooldown)
+            {
+                UnloadTimer();
+            }
+            SetButtonState(CooldownButtonState.OnCooldown);
+        }
+                
+        void OnButtonAvailable()
+        {
+            log.Debug($"Button {button.Content} back up");
+            if (!keyConfig.AutoDetectCooldown)
+            {
+                UnloadTimer();
+            }
+            SetButtonState(CooldownButtonState.Up);
         }
 
         public void UnloadTimer()
