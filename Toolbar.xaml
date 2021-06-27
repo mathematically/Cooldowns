@@ -20,9 +20,12 @@
     <Window.Resources>
         <Style TargetType="{x:Type Button}">
             <Setter Property="Width" Value="{Binding RelativeSource={x:Static RelativeSource.Self}, Path=ActualHeight}" />
-            <Setter Property="FontWeight" Value="ExtraBlack" />
             <Setter Property="Margin" Value="0" />
             <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderBrush" Value="Black" />
+            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="Background" Value="DarkGoldenrod" />
+            <Setter Property="FontWeight" Value="ExtraBlack" />
         </Style>
     </Window.Resources>
     <UniformGrid Rows="1">

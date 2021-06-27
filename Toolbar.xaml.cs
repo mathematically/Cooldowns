@@ -2,19 +2,18 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Controls;
 using WindowsInput.Native;
 using Cooldowns.Domain;
-using Cooldowns.Keyboard;
+using Cooldowns.Domain.Buttons;
+using Cooldowns.Domain.Config;
+using Cooldowns.Domain.Keyboard;
 using Microsoft.Extensions.Options;
 using NLog;
 using NLog.Config;
 using NLog.Targets;
-
 namespace Cooldowns
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class Toolbar : Window
     {
         private readonly Logger log = LogManager.GetCurrentClassLogger();
@@ -31,15 +30,6 @@ namespace Cooldowns
 
             LogManager.Configuration = config;
         }
-        
-        private readonly Win32KeyboardListener keyboardListener;
-
-        // ReSharper disable InconsistentNaming
-        private readonly CooldownButton Q;
-        private readonly CooldownButton W;
-        private readonly CooldownButton E;
-        private readonly CooldownButton R;
-        // ReSharper enable InconsistentNaming
 
         private enum AppState
         {
@@ -50,32 +40,61 @@ namespace Cooldowns
 
         private bool IsOff() => state == AppState.Off;
         private bool IsOn() => state == AppState.On;
-        private double PosX { get; set; }
-        private double PosY { get; set; }
 
-        public Toolbar(IOptions<Configuration.App> configuration)
+        private double PosX { get; }
+        private double PosY { get; }
+
+        private readonly IKeyboardListener keyboardListener;
+        private readonly CooldownButton q, w, e, r;
+
+        public Toolbar(IOptions<CooldownsApp> configuration, IDispatcher dispatcher, IScreen screen, IKeyboardListener keyboardListener)
         {
+            this.keyboardListener = keyboardListener;
+
             InitializeComponent();
             ConfigureLogging();
             
-            keyboardListener = new Win32KeyboardListener();
-
-            Q = new CooldownButton(Application.Current.Dispatcher, ButtonQ, configuration.Value.Q);
-            W = new CooldownButton(Application.Current.Dispatcher, ButtonW, configuration.Value.W);
-            E = new CooldownButton(Application.Current.Dispatcher, ButtonE, configuration.Value.E);
-            R = new CooldownButton(Application.Current.Dispatcher, ButtonR, configuration.Value.R);
-
-            ButtonQ.Content = configuration.Value.Q.Label;
-            ButtonQ.FontSize = configuration.Value.Toolbar.FontSize;
-            ButtonW.Content = configuration.Value.W.Label;
-            ButtonW.FontSize = configuration.Value.Toolbar.FontSize;
-            ButtonE.Content = configuration.Value.E.Label;
-            ButtonE.FontSize = configuration.Value.Toolbar.FontSize;
-            ButtonR.Content = configuration.Value.R.Label;
-            ButtonR.FontSize = configuration.Value.Toolbar.FontSize;
+            q = ButtonFactory(ButtonQ, configuration, dispatcher, screen, configuration.Value.Q);
+            w = ButtonFactory(ButtonW, configuration, dispatcher, screen, configuration.Value.W);
+            e = ButtonFactory(ButtonE, configuration, dispatcher, screen, configuration.Value.E);
+            r = ButtonFactory(ButtonR, configuration, dispatcher, screen, configuration.Value.R);
 
             PosX = configuration.Value.Toolbar.PosX;
             PosY = configuration.Value.Toolbar.PosY;
+        }
+
+        private CooldownButton ButtonFactory(Button button, IOptions<CooldownsApp> configuration, IDispatcher dispatcher, IScreen screen, Key key)
+        {
+            var cooldownButton = new CooldownButton(screen, dispatcher, key);
+
+            button.Content = key.Label;
+            button.FontSize = configuration.Value.Toolbar.FontSize;
+
+            cooldownButton.ButtonStateChanged += (_, buttonState) => Update(button, buttonState);
+
+            return cooldownButton;
+        }
+
+        private void Update(Button button, CooldownButtonState buttonState)
+        {
+            switch (buttonState)
+            {
+                case CooldownButtonState.Disabled:
+                    log.Debug($"Button {button.Content} disabled");
+                    button.Visibility = Visibility.Hidden;
+                    break;
+                case CooldownButtonState.OnCooldown:
+                case CooldownButtonState.AutoCasting:
+                    log.Debug($"Button {button.Content} on cooldown.");
+                    button.Visibility = Visibility.Hidden;
+                    break;
+                case CooldownButtonState.Up:
+                    log.Debug($"Button {button.Content} ready.");
+                    button.Visibility = Visibility.Visible;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(buttonState), buttonState, null);
+            }
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -109,17 +128,19 @@ namespace Cooldowns
             {
                 if (processName.Contains("Epoch"))
                 {
-                    SetOn();
+                    SetAppOn();
                 }
                 else
                 {
-                    SetOff();
+                    SetAppOff();
                 }
             });
         }
 
         private void OnKeyPressed(object? sender, KeyPressArgs e)
         {
+            // todo remove pause? It's not actually useful.
+
             if (e.KeyCode == VirtualKeyCode.PAUSE)
             {
                 ToggleEnabled();
@@ -131,64 +152,66 @@ namespace Cooldowns
             ProcessKeys(e);
         }
 
+        private void ProcessKeys(KeyPressArgs args)
+        {
+            switch (args.KeyCode)
+            {
+                case VirtualKeyCode.VK_Q:
+                    q.Press();
+                    break;
+                
+                case VirtualKeyCode.VK_W:
+                    w.Press();
+                    break;
+                
+                case VirtualKeyCode.VK_E:
+                    this.e.Press();
+                    break;
+                
+                case VirtualKeyCode.VK_R:
+                    r.Press();
+                    break;
+                
+                // todo move this up surely?
+                case VirtualKeyCode.SCROLL:
+                    Application.Current.Shutdown();
+                    break;
+
+                default:
+                    return;
+            }
+        }
+
         private void ToggleEnabled()
         {
             if (IsOff())
             {
-                SetOn();
+                SetAppOn();
             }
             else if (IsOn())
             {
-                SetOff();
+                SetAppOff();
             }
         }
 
-        private void SetOn()
+        private void SetAppOn()
         {
             state = AppState.On;
             Visibility = Visibility.Visible;
         }
         
-        private void SetOff()
+        private void SetAppOff()
         {
             state = AppState.Off;
             Visibility = Visibility.Collapsed;
         }
 
-
-        private void ProcessKeys(KeyPressArgs e)
-        {
-            // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
-            switch (e.KeyCode)
-            {
-                case VirtualKeyCode.VK_Q:
-                    Q.Press();
-                    break;
-                
-                case VirtualKeyCode.VK_W:
-                    W.Press();
-                    break;
-                
-                case VirtualKeyCode.VK_E:
-                    E.Press();
-                    break;
-                
-                case VirtualKeyCode.VK_R:
-                    R.Press();
-                    break;
-                
-                case VirtualKeyCode.SCROLL:
-                    Application.Current.Shutdown();
-                    break;
-            }
-        }
-
         private void OnClosed(object? sender, EventArgs e)
         {
-            Q.UnloadTimer();
-            W.UnloadTimer();
-            E.UnloadTimer();
-            R.UnloadTimer();
+            q.UnloadTimer();
+            w.UnloadTimer();
+            this.e.UnloadTimer();
+            r.UnloadTimer();
             
             Automation.RemoveAutomationFocusChangedEventHandler(OnFocusChanged);
             

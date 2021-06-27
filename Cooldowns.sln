@@ -1,6 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cooldowns", "Cooldowns.csproj", "{89770107-12DB-4720-93F3-39F24607F7F3}"
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30804.86
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cooldowns", "Cooldowns.csproj", "{89770107-12DB-4720-93F3-39F24607F7F3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cooldowns.Domain", "Cooldowns.Domain\Cooldowns.Domain.csproj", "{8BE085BD-5242-4FE0-B77F-CD2DD3F8D29C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -12,5 +17,15 @@ Global
 		{89770107-12DB-4720-93F3-39F24607F7F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{89770107-12DB-4720-93F3-39F24607F7F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{89770107-12DB-4720-93F3-39F24607F7F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8BE085BD-5242-4FE0-B77F-CD2DD3F8D29C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8BE085BD-5242-4FE0-B77F-CD2DD3F8D29C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8BE085BD-5242-4FE0-B77F-CD2DD3F8D29C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8BE085BD-5242-4FE0-B77F-CD2DD3F8D29C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B7041B84-2F5C-4599-A5AD-3018E8410FAD}
 	EndGlobalSection
 EndGlobal

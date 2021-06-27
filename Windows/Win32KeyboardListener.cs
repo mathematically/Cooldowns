@@ -2,12 +2,13 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using WindowsInput.Native;
-using Cooldowns.Keyboard;
+using Cooldowns.Domain.Keyboard;
+
 #pragma warning disable 8604
 #pragma warning disable 8602
 #pragma warning disable 8600
 
-namespace Cooldowns
+namespace Cooldowns.Windows
 {
     public class Win32KeyboardListener: IKeyboardListener
     {
@@ -53,11 +54,9 @@ namespace Cooldowns
         } 
         private IntPtr SetHook(LowLevelKeyboardCallback keyboardCallback)
         {
-            using (Process curProcess = Process.GetCurrentProcess())
-            using (ProcessModule curModule = curProcess.MainModule)
-            {
-                return SetWindowsHookEx(WH_KEYBOARD_LL, keyboardCallback, GetModuleHandle(curModule.ModuleName), 0);
-            }
+            using Process curProcess = Process.GetCurrentProcess();
+            using ProcessModule curModule = curProcess.MainModule;
+            return SetWindowsHookEx(WH_KEYBOARD_LL, keyboardCallback, GetModuleHandle(curModule.ModuleName), 0);
         }
         private IntPtr Callback(int nCode, IntPtr wParam, IntPtr lParam)
         {

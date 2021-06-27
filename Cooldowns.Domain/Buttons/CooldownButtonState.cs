@@ -1,4 +1,4 @@
-namespace Cooldowns.Domain
+namespace Cooldowns.Domain.Buttons
 {
     public enum CooldownButtonState
     {

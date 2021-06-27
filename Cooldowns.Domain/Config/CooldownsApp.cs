@@ -1,9 +1,6 @@
-// ReSharper disable UnusedAutoPropertyAccessor.Global
-// ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
-
-namespace Cooldowns.Configuration
+﻿namespace Cooldowns.Domain.Config
 {
-    public class App
+    public class CooldownsApp
     {
         public Toolbar Toolbar { get; set; } = new();
         public Key Q { get; set; } = new();

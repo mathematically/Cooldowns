@@ -20,6 +20,41 @@
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
       <None Remove=".gitignore" />
+      <None Remove="Cooldowns.Domain\**" />
+      <None Remove="Domain\**" />
+      <None Remove="Keyboard\**" />
+      <None Remove="Screen\**" />
+      <None Remove="Cooldown.Domain\**" />
+      <None Remove="Cooldowns.sln.DotSettings" />
+      <None Remove="LICENSE" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="Cooldowns.Domain\**" />
+      <Compile Remove="Domain\**" />
+      <Compile Remove="Keyboard\**" />
+      <Compile Remove="Screen\**" />
+      <Compile Remove="Cooldown.Domain\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="Cooldowns.Domain\**" />
+      <EmbeddedResource Remove="Domain\**" />
+      <EmbeddedResource Remove="Keyboard\**" />
+      <EmbeddedResource Remove="Screen\**" />
+      <EmbeddedResource Remove="Cooldown.Domain\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Page Remove="Cooldowns.Domain\**" />
+      <Page Remove="Domain\**" />
+      <Page Remove="Keyboard\**" />
+      <Page Remove="Screen\**" />
+      <Page Remove="Cooldown.Domain\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="Cooldowns.Domain\Cooldowns.Domain.csproj" />
     </ItemGroup>
 
 </Project>

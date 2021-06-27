@@ -1,7 +1,7 @@
 using System;
 using WindowsInput.Native;
 
-namespace Cooldowns.Keyboard
+namespace Cooldowns.Domain.Keyboard
 {
     public class KeyPressArgs : EventArgs
     {

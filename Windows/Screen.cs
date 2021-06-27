@@ -1,10 +1,11 @@
 using System.Drawing;
+using Cooldowns.Domain;
 
-namespace Cooldowns.Screen
+namespace Cooldowns.Windows
 {
-    public static class ScreenPixel
+    public class Screen: IScreen
     {
-        public static Color GetColor(int x, int y)
+        public Color GetPixelColor(int x, int y)
         {
             using var bitmap = new Bitmap(1, 1);
             using (var graphics = Graphics.FromImage(bitmap))

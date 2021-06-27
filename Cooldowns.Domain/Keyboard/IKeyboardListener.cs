@@ -1,10 +1,12 @@
 using System;
 
-namespace Cooldowns.Keyboard
+namespace Cooldowns.Domain.Keyboard
 {
     public interface IKeyboardListener
     {
         event EventHandler<KeyPressArgs> OnKeyPressed;
         event EventHandler<KeyPressArgs> OnKeyReleased;
+        void HookKeyboard();
+        void UnHookKeyboard();
     }
 }
