@@ -4,6 +4,6 @@ namespace Cooldowns.Domain
 {
     public interface IDispatcher
     {
-        void BeginInvoke(Action action);    
+        void BeginInvoke(Action action);
     }
 }

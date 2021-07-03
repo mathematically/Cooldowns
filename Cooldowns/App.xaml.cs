@@ -18,32 +18,26 @@ namespace Cooldowns
         // since .NET Core came about so I wanted to play with this stuff.
         
         // The settings/config is the most useful, the DI stuff a bit overkill.
-        // Not using the logging (no file logs) just a normal simple NLog to console and file.
+        // Not using the logging (no file logs?) just a normal simple NLog to console and file.
         
         public App()
         {
             host = Host.CreateDefaultBuilder()
-                .ConfigureAppConfiguration((context, builder) =>
-                {
-                    builder.AddJsonFile("appsettings.json", optional: false); 
-                })
-                .ConfigureServices((context, services) =>
-                {
-                    ConfigureServices(context.Configuration, services);
-                })
-                .Build();
+                       .ConfigureAppConfiguration((_, builder) => builder.AddJsonFile("appsettings.json", optional: false))
+                       .ConfigureServices((context, services) => ConfigureServices(context.Configuration, services))
+                       .Build();
         }
- 
+
         private void ConfigureServices(IConfiguration configuration, IServiceCollection services)
         {
-            services
-                .Configure<CooldownsApp>(configuration)
-                .AddSingleton<IKeyboardListener, Win32KeyboardListener>()
-                .AddSingleton<IDispatcher, AppDispatcher>()
-                .AddSingleton<IScreen, Screen>()
-                .AddSingleton<Toolbar>();
+            services.Configure<CooldownsApp>(configuration)
+                    .AddSingleton<IKeyboardListener, Win32KeyboardListener>()
+                    .AddSingleton<IKeyboard, KeyboardSimulator>()
+                    .AddSingleton<IDispatcher, AppDispatcher>()
+                    .AddSingleton<IScreen, Screen>()
+                    .AddSingleton<Toolbar>();
         }
- 
+
         protected override async void OnStartup(StartupEventArgs e)
         {
             await host.StartAsync();

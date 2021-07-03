@@ -3,7 +3,7 @@ using WindowsInput.Native;
 
 namespace Cooldowns.Domain.Keyboard
 {
-    public class KeyboardSimulator
+    public class KeyboardSimulator: IKeyboard
     {
         private readonly InputSimulator inputSimulator;
 
@@ -19,4 +19,5 @@ namespace Cooldowns.Domain.Keyboard
                 .Sleep(delay)
                 .KeyUp(key);
         }
-    }}
+    }
+}

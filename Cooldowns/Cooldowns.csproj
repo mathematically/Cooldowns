@@ -54,7 +54,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="Cooldowns.Domain\Cooldowns.Domain.csproj" />
+      <ProjectReference Include="..\Cooldowns.Domain\Cooldowns.Domain.csproj" />
     </ItemGroup>
 
 </Project>

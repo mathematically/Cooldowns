@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using WindowsInput.Native;
+using Cooldowns.Domain;
 using Cooldowns.Domain.Keyboard;
 
 #pragma warning disable 8604
@@ -10,7 +11,7 @@ using Cooldowns.Domain.Keyboard;
 
 namespace Cooldowns.Windows
 {
-    public class Win32KeyboardListener: IKeyboardListener
+    public class Win32KeyboardListener : IKeyboardListener
     {
         // ReSharper disable InconsistentNaming
         private const int WH_KEYBOARD_LL = 13;

@@ -3,7 +3,7 @@ using Cooldowns.Domain;
 
 namespace Cooldowns.Windows
 {
-    public class Screen: IScreen
+    public class Screen : IScreen
     {
         public Color GetPixelColor(int x, int y)
         {

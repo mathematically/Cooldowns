@@ -2,6 +2,6 @@ namespace Cooldowns.Domain.Buttons
 {
     public enum CooldownButtonState
     {
-        Disabled, OnCooldown, Up, AutoCasting
+        Disabled, Cooldown, Ready, AutoCasting
     }
 }

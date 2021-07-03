@@ -12,10 +12,16 @@ using Microsoft.Extensions.Options;
 using NLog;
 using NLog.Config;
 using NLog.Targets;
+
 namespace Cooldowns
 {
     public partial class Toolbar : Window
     {
+        private enum AppState
+        {
+            Off, On
+        }
+
         private readonly Logger log = LogManager.GetCurrentClassLogger();
 
         private static void ConfigureLogging()
@@ -31,25 +37,22 @@ namespace Cooldowns
             LogManager.Configuration = config;
         }
 
-        private enum AppState
-        {
-            Off, On
-        }
-
         private AppState state = AppState.On;
 
-        private bool IsOff() => state == AppState.Off;
-        private bool IsOn() => state == AppState.On;
+        private bool IsAppOff() => state == AppState.Off;
+        private bool IsAppOn() => state == AppState.On;
 
         private double PosX { get; }
         private double PosY { get; }
 
         private readonly IKeyboardListener keyboardListener;
+        private readonly IKeyboard keyboard;
         private readonly CooldownButton q, w, e, r;
 
-        public Toolbar(IOptions<CooldownsApp> configuration, IDispatcher dispatcher, IScreen screen, IKeyboardListener keyboardListener)
+        public Toolbar(IOptions<CooldownsApp> configuration, IDispatcher dispatcher, IScreen screen, IKeyboardListener keyboardListener, IKeyboard keyboard)
         {
             this.keyboardListener = keyboardListener;
+            this.keyboard = keyboard;
 
             InitializeComponent();
             ConfigureLogging();
@@ -65,17 +68,16 @@ namespace Cooldowns
 
         private CooldownButton ButtonFactory(Button button, IOptions<CooldownsApp> configuration, IDispatcher dispatcher, IScreen screen, Key key)
         {
-            var cooldownButton = new CooldownButton(screen, dispatcher, key);
+            var cooldownButton = new CooldownButton(screen, keyboard, new CooldownTimer(dispatcher), key);
+            cooldownButton.ButtonStateChanged += (_, buttonState) => OnToolbarButtonStateChanged(button, buttonState);
 
             button.Content = key.Label;
             button.FontSize = configuration.Value.Toolbar.FontSize;
 
-            cooldownButton.ButtonStateChanged += (_, buttonState) => Update(button, buttonState);
-
             return cooldownButton;
         }
 
-        private void Update(Button button, CooldownButtonState buttonState)
+        private void OnToolbarButtonStateChanged(Button button, CooldownButtonState buttonState)
         {
             switch (buttonState)
             {
@@ -83,18 +85,24 @@ namespace Cooldowns
                     log.Debug($"Button {button.Content} disabled");
                     button.Visibility = Visibility.Hidden;
                     break;
-                case CooldownButtonState.OnCooldown:
+                case CooldownButtonState.Cooldown:
                 case CooldownButtonState.AutoCasting:
                     log.Debug($"Button {button.Content} on cooldown.");
                     button.Visibility = Visibility.Hidden;
                     break;
-                case CooldownButtonState.Up:
+                case CooldownButtonState.Ready:
                     log.Debug($"Button {button.Content} ready.");
                     button.Visibility = Visibility.Visible;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(buttonState), buttonState, null);
             }
+        }
+
+        private void ResetWindowPosition()
+        {
+            Left = SystemParameters.PrimaryScreenWidth * PosX - Width * 0.5;
+            Top = SystemParameters.FullPrimaryScreenHeight * PosY - Height * 0.5;
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -107,12 +115,6 @@ namespace Cooldowns
             Automation.AddAutomationFocusChangedEventHandler(OnFocusChanged);
         }
 
-        private void ResetWindowPosition()
-        {
-            Left = SystemParameters.PrimaryScreenWidth * PosX - Width * 0.5;
-            Top = SystemParameters.FullPrimaryScreenHeight * PosY - Height * 0.5;
-        }
-
         private void OnFocusChanged(object sender, AutomationFocusChangedEventArgs e)
         {
             var focusedElement = sender as AutomationElement;
@@ -122,6 +124,8 @@ namespace Cooldowns
             var processName = process.ProcessName;
             
             log.Debug($"Focus changed {processName}");
+
+            // Disabled auto switch off when in IDE todo ?
             if (processName.Contains("Cooldowns")) return;
             
             Application.Current?.Dispatcher?.Invoke(() =>
@@ -139,15 +143,18 @@ namespace Cooldowns
 
         private void OnKeyPressed(object? sender, KeyPressArgs e)
         {
-            // todo remove pause? It's not actually useful.
-
-            if (e.KeyCode == VirtualKeyCode.PAUSE)
+            switch (e.KeyCode)
             {
-                ToggleEnabled();
-                return;
+                // todo remove pause? It's not actually useful. Quick way to stop chat spam maybe?
+                case VirtualKeyCode.PAUSE:
+                    ToggleEnabled();
+                    return;
+                case VirtualKeyCode.SCROLL:
+                    Application.Current.Shutdown();
+                    return;
             }
-            
-            if (IsOff()) return;
+
+            if (IsAppOff()) return;
             
             ProcessKeys(e);
         }
@@ -172,11 +179,6 @@ namespace Cooldowns
                     r.Press();
                     break;
                 
-                // todo move this up surely?
-                case VirtualKeyCode.SCROLL:
-                    Application.Current.Shutdown();
-                    break;
-
                 default:
                     return;
             }
@@ -184,11 +186,11 @@ namespace Cooldowns
 
         private void ToggleEnabled()
         {
-            if (IsOff())
+            if (IsAppOff())
             {
                 SetAppOn();
             }
-            else if (IsOn())
+            else if (IsAppOn())
             {
                 SetAppOff();
             }
@@ -206,12 +208,12 @@ namespace Cooldowns
             Visibility = Visibility.Collapsed;
         }
 
-        private void OnClosed(object? sender, EventArgs e)
+        private void OnClosed(object? sender, EventArgs args)
         {
-            q.UnloadTimer();
-            w.UnloadTimer();
-            this.e.UnloadTimer();
-            r.UnloadTimer();
+            q.Dispose();
+            w.Dispose();
+            e.Dispose();
+            r.Dispose();
             
             Automation.RemoveAutomationFocusChangedEventHandler(OnFocusChanged);
             

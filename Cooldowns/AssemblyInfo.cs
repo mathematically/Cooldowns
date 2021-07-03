@@ -1,4 +1,8 @@
+using System.Runtime.Versioning;
 using System.Windows;
+
+// This is to prevent CA1416 warnings/errors as described here : https://github.com/dotnet/sdk/issues/14502
+[assembly: SupportedOSPlatform("windows7.0")]
 
 [assembly: ThemeInfo(
     ResourceDictionaryLocation.None, //where theme specific resource dictionaries are located
