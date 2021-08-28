@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Media;
 using WindowsInput.Native;
 using Cooldowns.Domain;
 using Cooldowns.Domain.Buttons;
@@ -23,6 +24,9 @@ namespace Cooldowns
         }
 
         private readonly Logger log = LogManager.GetCurrentClassLogger();
+
+        private readonly SolidColorBrush goldenrodBrush = new(Colors.DarkGoldenrod);
+        private readonly SolidColorBrush blackBrush = new(Colors.Black);
 
         private static void ConfigureLogging()
         {
@@ -49,6 +53,8 @@ namespace Cooldowns
         private readonly IKeyboard keyboard;
         private readonly CooldownButton q, w, e, r;
 
+        private readonly ToolbarViewModel viewModel = new();
+
         public Toolbar(IOptions<CooldownsApp> configuration, IDispatcher dispatcher, IScreen screen, IKeyboardListener keyboardListener, IKeyboard keyboard)
         {
             this.keyboardListener = keyboardListener;
@@ -56,6 +62,8 @@ namespace Cooldowns
 
             InitializeComponent();
             ConfigureLogging();
+
+            DataContext = viewModel;
             
             q = ButtonFactory(ButtonQ, configuration, dispatcher, screen, configuration.Value.Q);
             w = ButtonFactory(ButtonW, configuration, dispatcher, screen, configuration.Value.W);
@@ -70,6 +78,7 @@ namespace Cooldowns
         {
             var cooldownButton = new CooldownButton(screen, keyboard, new CooldownTimer(dispatcher), key);
             cooldownButton.ButtonStateChanged += (_, buttonState) => OnToolbarButtonStateChanged(button, buttonState);
+            cooldownButton.ButtonModeChanged += (_, buttonMode) => OnToolbarButtonModeChanged(button, buttonMode);
 
             button.Content = key.Label;
             button.FontSize = configuration.Value.Toolbar.FontSize;
@@ -86,7 +95,6 @@ namespace Cooldowns
                     button.Visibility = Visibility.Hidden;
                     break;
                 case CooldownButtonState.Cooldown:
-                case CooldownButtonState.AutoCasting:
                     log.Debug($"Button {button.Content} on cooldown.");
                     button.Visibility = Visibility.Hidden;
                     break;
@@ -99,10 +107,31 @@ namespace Cooldowns
             }
         }
 
-        private void ResetWindowPosition()
+        private void OnToolbarButtonModeChanged(Button button, CooldownButtonMode buttonMode)
         {
-            Left = SystemParameters.PrimaryScreenWidth * PosX - Width * 0.5;
-            Top = SystemParameters.FullPrimaryScreenHeight * PosY - Height * 0.5;
+            string message = $"Button {button.Content} {buttonMode.ToString().ToUpper()}";
+
+            viewModel.StatusText = message;
+            log.Debug(message);
+
+            switch (buttonMode)
+            {
+                case CooldownButtonMode.Disabled:
+                    button.Visibility = Visibility.Hidden;
+                    break;
+                case CooldownButtonMode.Manual:
+                    button.Foreground = blackBrush;
+                    button.Background = goldenrodBrush;
+                    button.Visibility = Visibility.Visible;
+                    break;
+                case CooldownButtonMode.AutoCast:
+                    button.Foreground = goldenrodBrush;
+                    button.Background = blackBrush;
+                    button.Visibility = Visibility.Visible;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(buttonMode), buttonMode, null);
+            }
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -115,6 +144,12 @@ namespace Cooldowns
             Automation.AddAutomationFocusChangedEventHandler(OnFocusChanged);
         }
 
+        private void ResetWindowPosition()
+        {
+            Left = SystemParameters.PrimaryScreenWidth * PosX - Width * 0.5;
+            Top = SystemParameters.FullPrimaryScreenHeight * PosY - Height * 0.5;
+        }
+
         private void OnFocusChanged(object sender, AutomationFocusChangedEventArgs e)
         {
             var focusedElement = sender as AutomationElement;
@@ -124,8 +159,7 @@ namespace Cooldowns
             var processName = process.ProcessName;
             
             log.Debug($"Focus changed {processName}");
-
-            // Disabled auto switch off when in IDE todo ?
+            if (processName.Contains("Visual Studio")) return;
             if (processName.Contains("Cooldowns")) return;
             
             Application.Current?.Dispatcher?.Invoke(() =>
@@ -139,49 +173,6 @@ namespace Cooldowns
                     SetAppOff();
                 }
             });
-        }
-
-        private void OnKeyPressed(object? sender, KeyPressArgs e)
-        {
-            switch (e.KeyCode)
-            {
-                // todo remove pause? It's not actually useful. Quick way to stop chat spam maybe?
-                case VirtualKeyCode.PAUSE:
-                    ToggleEnabled();
-                    return;
-                case VirtualKeyCode.SCROLL:
-                    Application.Current.Shutdown();
-                    return;
-            }
-
-            if (IsAppOff()) return;
-            
-            ProcessKeys(e);
-        }
-
-        private void ProcessKeys(KeyPressArgs args)
-        {
-            switch (args.KeyCode)
-            {
-                case VirtualKeyCode.VK_Q:
-                    q.Press();
-                    break;
-                
-                case VirtualKeyCode.VK_W:
-                    w.Press();
-                    break;
-                
-                case VirtualKeyCode.VK_E:
-                    this.e.Press();
-                    break;
-                
-                case VirtualKeyCode.VK_R:
-                    r.Press();
-                    break;
-                
-                default:
-                    return;
-            }
         }
 
         private void ToggleEnabled()
@@ -206,6 +197,66 @@ namespace Cooldowns
         {
             state = AppState.Off;
             Visibility = Visibility.Collapsed;
+        }
+
+        private void OnKeyPressed(object? sender, KeyPressArgs e)
+        {
+            switch (e.KeyCode)
+            {
+                // todo remove pause? It's not actually useful. Quick way to stop chat spam maybe?
+                case VirtualKeyCode.PAUSE:
+                    ToggleEnabled();
+                    return;
+                case VirtualKeyCode.SCROLL:
+                    Application.Current.Shutdown();
+                    return;
+            }
+
+            if (IsAppOff()) return;
+            
+            ProcessKeys(e);
+        }
+
+        private void ProcessKeys(KeyPressArgs args)
+        {
+            switch (args.KeyCode)
+            {
+                // todo are these configurable or not?
+                case VirtualKeyCode.F5:
+                    q.ChangeMode();
+                    break;
+
+                case VirtualKeyCode.F6:
+                    w.ChangeMode();
+                    break;
+
+                case VirtualKeyCode.F7:
+                    e.ChangeMode();
+                    break;
+
+                case VirtualKeyCode.F8:
+                    r.ChangeMode();
+                    break;
+
+                case VirtualKeyCode.VK_Q:
+                    q.Press();
+                    break;
+                
+                case VirtualKeyCode.VK_W:
+                    w.Press();
+                    break;
+                
+                case VirtualKeyCode.VK_E:
+                    this.e.Press();
+                    break;
+                
+                case VirtualKeyCode.VK_R:
+                    r.Press();
+                    break;
+                
+                default:
+                    return;
+            }
         }
 
         private void OnClosed(object? sender, EventArgs args)

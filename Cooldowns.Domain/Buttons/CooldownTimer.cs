@@ -11,33 +11,31 @@ namespace Cooldowns.Domain.Buttons
         private readonly IDispatcher dispatcher;
         private Timer? timer;
 
-        public event EventHandler? CooldownEnded;
-
-        private void OnCooldownEnded()
-        {
-            CooldownEnded?.Invoke(this, EventArgs.Empty);
-        }
+        public event EventHandler? Ticked;
 
         public CooldownTimer(IDispatcher dispatcher)
         {
             this.dispatcher = dispatcher;
         }
 
-        public void StartRepeating()
-        {
-            if (timer != null) throw new SystemException("Cannot start a timer that has already been started");
-            timer = new Timer(OnTimerEnded, null, AutoCheckInterval, AutoCheckDelay);
-        }
-
-        public void StartOnce(int dueTime)
+        public void Start()
         {
             timer?.Dispose();
-            timer = new Timer(OnTimerEnded, null, Timeout.Infinite, dueTime);
+            timer = new Timer(OnTimerTicked, null, AutoCheckInterval, AutoCheckDelay);
         }
 
-        private void OnTimerEnded(object? state)
+        public void Stop()
         {
-            dispatcher.BeginInvoke(OnCooldownEnded);
+            timer?.Dispose();
+            timer = null;
+        }
+
+        private void OnTimerTicked(object? state)
+        {
+            dispatcher.BeginInvoke(() =>
+            {
+                Ticked?.Invoke(this, EventArgs.Empty);
+            });
         }
 
         public void Dispose()

@@ -2,10 +2,10 @@
 {
     public class CooldownsApp
     {
-        public Toolbar Toolbar { get; set; } = new();
-        public Key Q { get; set; } = new();
-        public Key W { get; set; } = new();
-        public Key E { get; set; } = new();
-        public Key R { get; set; } = new();
+        public Toolbar Toolbar { get; } = new();
+        public Key Q { get; } = new();
+        public Key W { get; } = new();
+        public Key E { get; } = new();
+        public Key R { get; } = new();
     }
 }

@@ -16,8 +16,6 @@ namespace Cooldowns.Tests.Fixtures
 
         protected Key Config = new();
 
-        //protected readonly FakeCooldownTimer CooldownTimer = new();
-
         protected CooldownButtonState ExpectedState = CooldownButtonState.Disabled;
 
         protected void AssertButtonCooldownState(object? _, CooldownButtonState actualState)

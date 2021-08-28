@@ -21,9 +21,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. */
 
 using System;
-#pragma warning disable 8618
 
-// ReSharper disable InheritdocConsiderUsage
+// ReSharper disable UnusedType.Global
 
 #pragma warning disable 1591
 // ReSharper disable UnusedMember.Global
@@ -33,7 +32,7 @@ using System;
 // ReSharper disable MemberCanBeProtected.Global
 // ReSharper disable InconsistentNaming
 
-namespace Cooldowns.Annotations
+namespace Cooldowns
 {
   /// <summary>
   /// Indicates that the value of the marked element could be <c>null</c> sometimes,
@@ -108,7 +107,7 @@ namespace Cooldowns.Annotations
 
   /// <summary>
   /// Indicates that the marked method builds string by the format pattern and (optional) arguments.
-  /// The parameter, which contains the format string, should be given in constructor. The format string
+  /// The parameter, which contains the format string, should be given in the constructor. The format string
   /// should be in <see cref="string.Format(IFormatProvider,string,object[])"/>-like form.
   /// </summary>
   /// <example><code>
@@ -134,6 +133,20 @@ namespace Cooldowns.Annotations
 
     [NotNull] public string FormatParameterName { get; }
   }
+
+  /// <summary>
+  /// Indicates that the marked parameter is a message template where placeholders are to be replaced by the following arguments
+  /// in the order in which they appear
+  /// </summary>
+  /// <example><code>
+  /// void LogInfo([StructuredMessageTemplate]string message, params object[] args) { /* do something */ }
+  /// 
+  /// void Foo() {
+  ///   LogInfo("User created: {username}"); // Warning: Non-existing argument in format string
+  /// }
+  /// </code></example>
+  [AttributeUsage(AttributeTargets.Parameter)]
+  public sealed class StructuredMessageTemplateAttribute : Attribute {}
 
   /// <summary>
   /// Use this annotation to specify a type that contains static or const fields
@@ -315,7 +328,7 @@ namespace Cooldowns.Annotations
   /// means that the method doesn't return normally (throws or terminates the process).<br/>
   /// Value <c>canbenull</c> is only applicable for output parameters.<br/>
   /// You can use multiple <c>[ContractAnnotation]</c> for each FDT row, or use single attribute
-  /// with rows separated by semicolon. There is no notion of order rows, all rows are checked
+  /// with rows separated by the semicolon. There is no notion of order rows, all rows are checked
   /// for applicability and applied per each program state tracked by the analysis engine.<br/>
   /// </syntax>
   /// <examples><list>
@@ -429,8 +442,23 @@ namespace Cooldowns.Annotations
 
   /// <summary>
   /// Indicates that the marked symbol is used implicitly (e.g. via reflection, in external library),
-  /// so this symbol will not be reported as unused (as well as by other usage inspections).
+  /// so this symbol will be ignored by usage-checking inspections. <br/>
+  /// You can use <see cref="ImplicitUseKindFlags"/> and <see cref="ImplicitUseTargetFlags"/>
+  /// to configure how this attribute is applied.
   /// </summary>
+  /// <example><code>
+  /// [UsedImplicitly]
+  /// public class TypeConverter {}
+  /// 
+  /// public class SummaryData
+  /// {
+  ///   [UsedImplicitly(ImplicitUseKindFlags.InstantiatedWithFixedConstructorSignature)]
+  ///   public SummaryData() {}
+  /// }
+  /// 
+  /// [UsedImplicitly(ImplicitUseTargetFlags.WithInheritors | ImplicitUseTargetFlags.Default)]
+  /// public interface IService {}
+  /// </code></example>
   [AttributeUsage(AttributeTargets.All)]
   public sealed class UsedImplicitlyAttribute : Attribute
   {
@@ -457,8 +485,8 @@ namespace Cooldowns.Annotations
   /// <summary>
   /// Can be applied to attributes, type parameters, and parameters of a type assignable from <see cref="System.Type"/> .
   /// When applied to an attribute, the decorated attribute behaves the same as <see cref="UsedImplicitlyAttribute"/>.
-  /// When applied to a type parameter or to a parameter of type <see cref="System.Type"/>,  indicates that the corresponding type
-  /// is used implicitly.
+  /// When applied to a type parameter or to a parameter of type <see cref="System.Type"/>,
+  /// indicates that the corresponding type is used implicitly.
   /// </summary>
   [AttributeUsage(AttributeTargets.Class | AttributeTargets.GenericParameter | AttributeTargets.Parameter)]
   public sealed class MeansImplicitUseAttribute : Attribute
@@ -484,7 +512,7 @@ namespace Cooldowns.Annotations
   }
 
   /// <summary>
-  /// Specify the details of implicitly used symbol when it is marked
+  /// Specifies the details of implicitly used symbol when it is marked
   /// with <see cref="MeansImplicitUseAttribute"/> or <see cref="UsedImplicitlyAttribute"/>.
   /// </summary>
   [Flags]
@@ -505,7 +533,7 @@ namespace Cooldowns.Annotations
   }
 
   /// <summary>
-  /// Specify what is considered to be used implicitly when marked
+  /// Specifies what is considered to be used implicitly when marked
   /// with <see cref="MeansImplicitUseAttribute"/> or <see cref="UsedImplicitlyAttribute"/>.
   /// </summary>
   [Flags]
@@ -513,16 +541,16 @@ namespace Cooldowns.Annotations
   {
     Default = Itself,
     Itself = 1,
-    /// <summary>Members of entity marked with attribute are considered used.</summary>
+    /// <summary>Members of the type marked with the attribute are considered used.</summary>
     Members = 2,
     /// <summary> Inherited entities are considered used. </summary>
     WithInheritors = 4,
-    /// <summary>Entity marked with attribute and all its members considered used.</summary>
+    /// <summary>Entity marked with the attribute and all its members considered used.</summary>
     WithMembers = Itself | Members
   }
 
   /// <summary>
-  /// This attribute is intended to mark publicly available API
+  /// This attribute is intended to mark publicly available API,
   /// which should not be removed and so is treated as used.
   /// </summary>
   [MeansImplicitUse(ImplicitUseTargetFlags.WithMembers)]
@@ -540,7 +568,7 @@ namespace Cooldowns.Annotations
   }
 
   /// <summary>
-  /// Tells code analysis engine if the parameter is completely handled when the invoked method is on stack.
+  /// Tells the code analysis engine if the parameter is completely handled when the invoked method is on stack.
   /// If the parameter is a delegate, indicates that delegate is executed while the method is executed.
   /// If the parameter is an enumerable, indicates that it is enumerated while the method is executed.
   /// </summary>
@@ -568,8 +596,8 @@ namespace Cooldowns.Annotations
   /// Methods decorated with this attribute (in contrast to pure methods) might change state,
   /// but make no sense without using their return value. <br/>
   /// Similarly to <see cref="PureAttribute"/>, this attribute
-  /// will help detecting usages of the method when the return value in not used.
-  /// Additionally, you can optionally specify a custom message, which will be used when showing warnings, e.g.
+  /// will help to detect usages of the method when the return value is not used.
+  /// Optionally, you can specify a message to use when showing warnings, e.g.
   /// <code>[MustUseReturnValue("Use the return value to...")]</code>.
   /// </remarks>
   [AttributeUsage(AttributeTargets.Method)]
@@ -583,6 +611,25 @@ namespace Cooldowns.Annotations
     }
 
     [CanBeNull] public string Justification { get; }
+  }
+
+  /// <summary>
+  /// This annotation allows to enforce allocation-less usage patterns of delegates for performance-critical APIs.
+  /// When this annotation is applied to the parameter of delegate type, IDE checks the input argument of this parameter:
+  /// * When lambda expression or anonymous method is passed as an argument, IDE verifies that the passed closure
+  ///   has no captures of the containing local variables and the compiler is able to cache the delegate instance
+  ///   to avoid heap allocations. Otherwise the warning is produced.
+  /// * IDE warns when method name or local function name is passed as an argument as this always results
+  ///   in heap allocation of the delegate instance.
+  /// </summary>
+  /// <remarks>
+  /// In C# 9.0 code IDE would also suggest to annotate the anonymous function with 'static' modifier
+  /// to make use of the similar analysis provided by the language/compiler.
+  /// </remarks>
+  [AttributeUsage(AttributeTargets.Parameter)]
+  public class RequireStaticDelegateAttribute : Attribute
+  {
+    public bool IsError { get; set; }
   }
 
   /// <summary>
@@ -1050,7 +1097,7 @@ namespace Cooldowns.Annotations
   public sealed class TerminatesProgramAttribute : Attribute { }
 
   /// <summary>
-  /// Indicates that method is pure LINQ method, with postponed enumeration (like Enumerable.Select,
+  /// Indicates that the method is a pure LINQ method, with postponed enumeration (like Enumerable.Select,
   /// .Where). This annotation allows inference of [InstantHandle] annotation for parameters
   /// of delegate type by analyzing LINQ method chains.
   /// </summary>
@@ -1077,7 +1124,7 @@ namespace Cooldowns.Annotations
   public sealed class NoEnumerationAttribute : Attribute { }
 
   /// <summary>
-  /// Indicates that the marked parameter is a regular expression pattern.
+  /// Indicates that the marked parameter, field, or property is a regular expression pattern.
   /// </summary>
   [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Field | AttributeTargets.Property)]
   public sealed class RegexPatternAttribute : Attribute { }
@@ -1122,6 +1169,24 @@ namespace Cooldowns.Annotations
   /// </remarks>
   [AttributeUsage(AttributeTargets.Property)]
   public sealed class XamlItemStyleOfItemsControlAttribute : Attribute { }
+
+  /// <summary>
+  /// XAML attribute. Indicates that DependencyProperty has <c>OneWay</c> binding mode by default.
+  /// </summary>
+  /// <remarks>
+  /// This attribute must be applied to DependencyProperty's CLR accessor property if it is present, to DependencyProperty descriptor field otherwise.
+  /// </remarks>
+  [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+  public sealed class XamlOneWayBindingModeByDefaultAttribute : Attribute { }
+
+  /// <summary>
+  /// XAML attribute. Indicates that DependencyProperty has <c>TwoWay</c> binding mode by default.
+  /// </summary>
+  /// <remarks>
+  /// This attribute must be applied to DependencyProperty's CLR accessor property if it is present, to DependencyProperty descriptor field otherwise.
+  /// </remarks>
+  [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+  public sealed class XamlTwoWayBindingModeByDefaultAttribute : Attribute { }
 
   [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
   public sealed class AspChildControlTypeAttribute : Attribute
@@ -1235,4 +1300,56 @@ namespace Cooldowns.Annotations
 
   [AttributeUsage(AttributeTargets.Parameter)]
   public sealed class RazorWriteMethodParameterAttribute : Attribute { }
+
+  /// <summary>
+  /// Indicates that the marked parameter, field, or property is a route template.
+  /// </summary>
+  /// <remarks>
+  /// This attribute allows IDE to recognize the use of web frameworks' route templates
+  /// to enable syntax highlighting, code completion, navigation, rename and other features in string literals.
+  /// </remarks>
+  [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Field | AttributeTargets.Property)]
+  public sealed class RouteTemplateAttribute : Attribute { }
+
+  /// <summary>
+  /// Indicates that the marked type is custom route parameter constraint,
+  /// which is registered in application's Startup with name <c>ConstraintName</c>
+  /// </summary>
+  /// <remarks>
+  /// You can specify <c>ProposedType</c> if target constraint matches only route parameters of specific type,
+  /// it will allow IDE to create method's parameter from usage in route template
+  /// with specified type instead of default <c>System.String</c>
+  /// and check if constraint's proposed type conflicts with matched parameter's type
+  /// </remarks>
+  [AttributeUsage(AttributeTargets.Class)]
+  public sealed class RouteParameterConstraintAttribute : Attribute
+  {
+    [NotNull] public string ConstraintName { get; }
+    [CanBeNull] public Type ProposedType { get; set; }
+
+    public RouteParameterConstraintAttribute([NotNull] string constraintName)
+    {
+      ConstraintName = constraintName;
+    }
+  }
+
+  /// <summary>
+  /// Indicates that the marked parameter, field, or property is an URI string.
+  /// </summary>
+  /// <remarks>
+  /// This attribute enables code completion, navigation, rename and other features
+  /// in URI string literals assigned to annotated parameter, field or property.
+  /// </remarks>
+  [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Field | AttributeTargets.Property)]
+  public sealed class UriStringAttribute : Attribute
+  {
+    public UriStringAttribute() { }
+
+    public UriStringAttribute(string httpVerb)
+    {
+      HttpVerb = httpVerb;
+    }
+
+    [CanBeNull] public string HttpVerb { get; }
+  }
 }

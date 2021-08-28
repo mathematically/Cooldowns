@@ -15,24 +15,25 @@ namespace Cooldowns.Domain.Buttons
         public static readonly Color SkillCooldownColor = Color.FromArgb(17, 17, 21);
 
         private static bool IsSkillAvailable(Color p) => p.ToArgb().Equals(SkillAvailableColor.ToArgb());
-        private static bool IsSkillOnCooldown(Color p) => p.ToArgb().Equals(SkillCooldownColor.ToArgb());
+        private static bool IsSkillCooldown(Color p) => p.ToArgb().Equals(SkillCooldownColor.ToArgb());
         
         private readonly IScreen screen;
         private readonly IKeyboard keyboard;
         private readonly ICooldownTimer cooldownTimer;
-        private readonly Key key;
-        private readonly VirtualKeyCode autocastKeyCode;
 
-        private CooldownButtonState buttonState = CooldownButtonState.Disabled;
+        private readonly Key key;
+
+        public VirtualKeyCode ActionKeyCode { get; }
+        public VirtualKeyCode ModeKeyCode { get; }
+
+        private bool isAvailable;
+        private bool isCooldown;
+
+        private CooldownButtonState buttonState = CooldownButtonState.Ready;
+        private CooldownButtonMode buttonMode = CooldownButtonMode.Manual;
 
         public event EventHandler<CooldownButtonState>? ButtonStateChanged;
-
-        private void OnButtonStateChanged(CooldownButtonState state)
-        {
-            if (buttonState == state) return;
-            buttonState = state;
-            ButtonStateChanged?.Invoke(this, buttonState);
-        }
+        public event EventHandler<CooldownButtonMode>? ButtonModeChanged;
 
         public CooldownButton(IScreen screen, IKeyboard keyboard, ICooldownTimer cooldownTimer, Key key)
         {
@@ -41,116 +42,147 @@ namespace Cooldowns.Domain.Buttons
             this.cooldownTimer = cooldownTimer;
             this.key = key;
 
-            cooldownTimer.CooldownEnded += OnCooldownEnded;
-            autocastKeyCode = Enum.Parse<VirtualKeyCode>(key.AutocastKey);
+            ActionKeyCode = Enum.Parse<VirtualKeyCode>(key.ActionKey);
+            ModeKeyCode = Enum.Parse<VirtualKeyCode>(key.ModeKey);
+
+            cooldownTimer.Ticked += OnTimerTicked;
            
-            // todo what are the rules for these settings? What combos are ok? Do we need cooldown at all now?
+            OnButtonModeChanged(buttonMode);
+            OnButtonStateChanged(buttonState);
+        }
 
-            if (key.Autocast)
+        private void OnButtonStateChanged(CooldownButtonState state)
+        {
+            if (buttonState == state) return;
+            buttonState = state;
+            ButtonStateChanged?.Invoke(this, buttonState);
+        }
+
+        private void OnButtonModeChanged(CooldownButtonMode mode)
+        {
+            if (buttonMode == mode) return;
+            buttonMode = mode;
+            ButtonModeChanged?.Invoke(this, mode);
+        }
+
+        public void ChangeMode()
+        {
+            // Mode just cycles through the various options in a fixed sequence to keep the
+            // required UI just a simple button.
+            switch (buttonMode)
             {
-                log.Debug($"Key {key.Label} will auto cast as {autocastKeyCode}");
+                case CooldownButtonMode.Disabled:
+                    EnterManualMode();
+                    break;
+                case CooldownButtonMode.Manual:
+                    EnterAutocastMode();
+                    break;
+                case CooldownButtonMode.AutoCast:
+                    EnterDisabledMode();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
 
-            if (key.AutoDetectCooldown)
+            void EnterManualMode()
             {
-                log.Debug($"Key {key.Label} will auto detect cooldonws based on screen pixels");
-                cooldownTimer.StartRepeating();
+                OnButtonModeChanged(CooldownButtonMode.Manual);
+                OnButtonStateChanged(CooldownButtonState.Ready);
+
+                // On entering manual mode stop any timer.
+                // A new one will start on the next button press.
+                cooldownTimer.Stop();
             }
 
-            OnButtonStateChanged(key.Enabled ? CooldownButtonState.Ready : CooldownButtonState.Disabled);
+            void EnterAutocastMode()
+            {
+                OnButtonModeChanged(CooldownButtonMode.AutoCast);
+                OnButtonStateChanged(CooldownButtonState.Ready);
+
+                // Autocast mode so start the timer which will read
+                // the screen to check button state and to autocast.
+                cooldownTimer.Start();
+            }
+
+            void EnterDisabledMode()
+            {
+                // Disabled is all off.
+                OnButtonModeChanged(CooldownButtonMode.Disabled);
+                OnButtonStateChanged(CooldownButtonState.Disabled);
+                cooldownTimer.Stop();
+            }
         }
 
         public void Press()
         {
-            if (buttonState == CooldownButtonState.Disabled || key.AutoDetectCooldown) return;
-
-            switch (key.Autocast)
+            switch (buttonMode)
             {
-                case true when buttonState == CooldownButtonState.AutoCasting:
-                    log.Debug($"Auto cast stopped for {key.Label} will be disabled on next timer end.");
+                // Disabled or AutoCasting nothing to do on button press.
+                case CooldownButtonMode.Disabled or CooldownButtonMode.AutoCast:
+                    return;
+                // Manual mode we need to start the timer so we can check for cooldown end
+                case CooldownButtonMode.Manual when buttonState == CooldownButtonState.Ready:
+                    log.Debug($"Starting one shot timer for {key.Label} keypress.");
                     OnButtonStateChanged(CooldownButtonState.Cooldown);
-                    
+                    cooldownTimer.Start();
                     break;
-                
-                case true when buttonState == CooldownButtonState.Ready:
-                    log.Debug($"Enabling auto cast for {key.Label} as {autocastKeyCode}.");
-                    cooldownTimer.StartRepeating();
-                    OnButtonStateChanged(CooldownButtonState.AutoCasting);
-                    
+            }
+        }
+
+        private void OnTimerTicked(object? o, EventArgs eventArgs)
+        {
+            switch (buttonMode)
+            {
+                case CooldownButtonMode.Disabled:
+                    return;
+                case CooldownButtonMode.Manual:
+                    ProcessManualCooldown();
                     break;
-                
+                case CooldownButtonMode.AutoCast:
+                    ProcessAutocastCooldown();
+                    break;
                 default:
-                    if (buttonState == CooldownButtonState.Ready)
-                    {
-                        log.Debug($"Creating one shot timer for {key.Label}.");
-                        cooldownTimer.StartOnce(key.Cooldown);
-                        OnButtonStateChanged(CooldownButtonState.Cooldown);
-                    }
-
-                    break;
+                    throw new ArgumentOutOfRangeException();
             }
         }
 
-        private void OnCooldownEnded(object? o, EventArgs eventArgs)
+        private void ProcessManualCooldown()
         {
-            if (key.AutoDetectCooldown)
-            {
-                ProcessAutoDetectCooldown();
-            }
-            else
-            {
-                ProcessCooldown();
-            }
-        }
-
-        private void ProcessAutoDetectCooldown()
-        {
-            var pixel = screen.GetPixelColor(key.DetectX, key.DetectY);
-            var isAvailable = IsSkillAvailable(pixel);
-            var isOnCooldown = IsSkillOnCooldown(pixel);
+            GetButtonStateFromScreen();
 
             if (isAvailable && buttonState == CooldownButtonState.Cooldown)
             {
-                OnButtonAvailable();
+                OnButtonStateChanged(CooldownButtonState.Ready);
+                cooldownTimer.Stop();
             }
-            else if (isOnCooldown && buttonState is CooldownButtonState.Ready)
+            else if (isCooldown && buttonState is CooldownButtonState.Ready)
             {
-                OnButtonOnCooldown();
-            }
-            else if (!isAvailable && !isOnCooldown && buttonState is CooldownButtonState.Ready)
-            {
-                log.Debug($"{key.Label} has been toggled on {pixel}");
-                OnButtonOnCooldown();
+                OnButtonStateChanged(CooldownButtonState.Cooldown);
+                cooldownTimer.Start();
             }
         }
 
-        private void ProcessCooldown()
+        private void ProcessAutocastCooldown()
         {
-            if (buttonState == CooldownButtonState.AutoCasting)
+            GetButtonStateFromScreen();
+
+            if (isAvailable)
             {
-                keyboard.PressKey(autocastKeyCode);
-            }
-            else
-            {
-                OnButtonAvailable();
+                keyboard.PressKey(ActionKeyCode);
             }
         }
 
-        void OnButtonOnCooldown()
+        private void GetButtonStateFromScreen()
         {
-            log.Debug($"Button {key.Label} on cooldown");
-            OnButtonStateChanged(CooldownButtonState.Cooldown);
-        }
+            Color pixelColor = screen.GetPixelColor(key.DetectX, key.DetectY);
 
-        void OnButtonAvailable()
-        {
-            log.Debug($"Button {key.Label} back up");
-            OnButtonStateChanged(CooldownButtonState.Ready);
+            isAvailable = IsSkillAvailable(pixelColor);
+            isCooldown = IsSkillCooldown(pixelColor);
         }
 
         public void Dispose()
         {
-            cooldownTimer.CooldownEnded -= OnCooldownEnded;
+            cooldownTimer.Ticked -= OnTimerTicked;
             cooldownTimer.Dispose();
         }
     }

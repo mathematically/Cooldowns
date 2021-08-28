@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:b="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:behaviours="clr-namespace:Cooldowns.Behaviours"
+        xmlns:local="clr-namespace:Cooldowns"
         mc:Ignorable="d"
         WindowStyle="None"
         SizeToContent="WidthAndHeight"
@@ -27,11 +28,36 @@
             <Setter Property="Background" Value="DarkGoldenrod" />
             <Setter Property="FontWeight" Value="ExtraBlack" />
         </Style>
+        <Style x:Key="TextBlockStyle" TargetType="{x:Type TextBlock}">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="DarkGoldenrod" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Opacity" Value="0.0" />
+            <Setter Property="FontWeight" Value="Black" />
+            <Setter Property="FontSize" Value="14" />
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="Binding.TargetUpdated">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(TextBlock.Opacity)" From="1.0" To="0.0" Duration="0:0:3"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
-    <UniformGrid Rows="1">
-        <Button Name="ButtonQ" Content="Q" />
-        <Button Name="ButtonW" Content="W" />
-        <Button Name="ButtonE" Content="E" />
-        <Button Name="ButtonR" Content="R" />
-    </UniformGrid>
+    <Window.DataContext>
+        <local:ToolbarViewModel />
+    </Window.DataContext>
+    <StackPanel Orientation="Vertical">
+        <UniformGrid Rows="1">
+            <Button Name="ButtonQ" Content="Q" />
+            <Button Name="ButtonW" Content="W" />
+            <Button Name="ButtonE" Content="E" />
+            <Button Name="ButtonR" Content="R" />
+        </UniformGrid>
+        <TextBlock Style="{StaticResource TextBlockStyle}" Text="{Binding StatusText, NotifyOnTargetUpdated=True}" />
+    </StackPanel>
 </Window>

@@ -12,22 +12,20 @@ namespace Cooldowns.Tests
         {
             Config = new Key
             {
-                Autocast = false,
-                AutocastKey = "F5",
-                AutoDetectCooldown = false,
-                Cooldown = 1000,
+                Label = "Q",
+                ActionKey = "VK_Q",
+                ModeKey = "F5",
                 DetectX = 100,
                 DetectY = 200,
-                Enabled = true,
             };
         }
 
         [Fact]
-        public void When_button_pressed_button_on_cooldown()
+        public void When_button_pressed_button_is_on_cooldown()
         {
             var sut = new CooldownButton(Screen, Keyboard, CooldownTimer, Config);
-
             sut.ButtonStateChanged += AssertButtonCooldownState;
+
             SetScreenPixel(CooldownButton.SkillCooldownColor);
             ExpectedState = CooldownButtonState.Cooldown;
 
@@ -39,12 +37,12 @@ namespace Cooldowns.Tests
         {
             var sut = new CooldownButton(Screen, Keyboard, CooldownTimer, Config);
             sut.Press();
-
             sut.ButtonStateChanged += AssertButtonCooldownState;
+
             SetScreenPixel(CooldownButton.SkillAvailableColor);
             ExpectedState = CooldownButtonState.Ready;
 
-            CooldownTimer.CooldownEnded += Raise.Event();
+            CooldownTimer.Ticked += Raise.Event();
         }
     }
 }
