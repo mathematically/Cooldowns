@@ -1,3 +1,4 @@
+using System.Drawing;
 using Cooldowns.Domain.Buttons;
 using Cooldowns.Domain.Config;
 using Cooldowns.Tests.Fixtures;
@@ -18,29 +19,45 @@ namespace Cooldowns.Tests
                 DetectX = 100,
                 DetectY = 200,
             };
+
+            SetScreenPixel(CooldownButton.SkillAvailableColor);
+        }
+
+        private void CreateSut()
+        {
+            var sut = new CooldownButton(Screen, Keyboard, Dispatcher, CooldownTimer, Config);
+            sut.ButtonStateChanged += AssertButtonCooldownState;
         }
 
         [Fact]
         public void When_button_pressed_button_is_on_cooldown()
         {
-            var sut = new CooldownButton(Screen, Keyboard, CooldownTimer, Config);
-            sut.ButtonStateChanged += AssertButtonCooldownState;
+            CreateSut();
 
             SetScreenPixel(CooldownButton.SkillCooldownColor);
             ExpectedState = CooldownButtonState.Cooldown;
 
-            sut.Press();
+            CooldownTimer.Ticked += Raise.Event();
         }
 
         [Fact]
         public void When_cooldown_ends_button_is_available()
         {
-            var sut = new CooldownButton(Screen, Keyboard, CooldownTimer, Config);
-            sut.Press();
-            sut.ButtonStateChanged += AssertButtonCooldownState;
+            CreateSut();
 
             SetScreenPixel(CooldownButton.SkillAvailableColor);
             ExpectedState = CooldownButtonState.Ready;
+
+            CooldownTimer.Ticked += Raise.Event();
+        }
+
+        [Fact]
+        public void If_color_unknown_button_is_on_cooldown()
+        {
+            CreateSut();
+
+            SetScreenPixel(Color.DarkSalmon);
+            ExpectedState = CooldownButtonState.Cooldown;
 
             CooldownTimer.Ticked += Raise.Event();
         }

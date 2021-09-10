@@ -51,8 +51,9 @@ namespace Cooldowns
 
         private readonly IKeyboardListener keyboardListener;
         private readonly IKeyboard keyboard;
-        private readonly CooldownButton q, w, e, r;
+        private readonly ICooldownTimer cooldownTimer;
 
+        private readonly CooldownButton q, w, e, r;
         private readonly ToolbarViewModel viewModel = new();
 
         public Toolbar(IOptions<CooldownsApp> configuration, IDispatcher dispatcher, IScreen screen, IKeyboardListener keyboardListener, IKeyboard keyboard)
@@ -64,19 +65,21 @@ namespace Cooldowns
             ConfigureLogging();
 
             DataContext = viewModel;
-            
-            q = ButtonFactory(ButtonQ, configuration, dispatcher, screen, configuration.Value.Q);
-            w = ButtonFactory(ButtonW, configuration, dispatcher, screen, configuration.Value.W);
-            e = ButtonFactory(ButtonE, configuration, dispatcher, screen, configuration.Value.E);
-            r = ButtonFactory(ButtonR, configuration, dispatcher, screen, configuration.Value.R);
+            cooldownTimer = new CooldownTimer();
+
+            q = ButtonFactory(ButtonQ, configuration, dispatcher, screen, cooldownTimer, configuration.Value.Q);
+            w = ButtonFactory(ButtonW, configuration, dispatcher, screen, cooldownTimer, configuration.Value.W);
+            e = ButtonFactory(ButtonE, configuration, dispatcher, screen, cooldownTimer, configuration.Value.E);
+            r = ButtonFactory(ButtonR, configuration, dispatcher, screen, cooldownTimer, configuration.Value.R);
 
             PosX = configuration.Value.Toolbar.PosX;
             PosY = configuration.Value.Toolbar.PosY;
         }
 
-        private CooldownButton ButtonFactory(Button button, IOptions<CooldownsApp> configuration, IDispatcher dispatcher, IScreen screen, Key key)
+        private CooldownButton ButtonFactory(Button button, IOptions<CooldownsApp> configuration,
+            IDispatcher dispatcher, IScreen screen, ICooldownTimer cooldownTimer, Key key)
         {
-            var cooldownButton = new CooldownButton(screen, keyboard, new CooldownTimer(dispatcher), key);
+            var cooldownButton = new CooldownButton(screen, keyboard, dispatcher, cooldownTimer, key);
             cooldownButton.ButtonStateChanged += (_, buttonState) => OnToolbarButtonStateChanged(button, buttonState);
             cooldownButton.ButtonModeChanged += (_, buttonMode) => OnToolbarButtonModeChanged(button, buttonMode);
 
@@ -90,17 +93,19 @@ namespace Cooldowns
         {
             switch (buttonState)
             {
-                case CooldownButtonState.Disabled:
-                    log.Debug($"Button {button.Content} disabled");
+                case CooldownButtonState.Cooldown:
+                    log.Debug($"Button {button.Content} is on COOLDOWN.");
                     button.Visibility = Visibility.Hidden;
                     break;
-                case CooldownButtonState.Cooldown:
-                    log.Debug($"Button {button.Content} on cooldown.");
-                    button.Visibility = Visibility.Hidden;
+                case CooldownButtonState.Active:
+                    log.Debug($"Button {button.Content} skill is now ACTIVE.");
+                    button.Visibility = Visibility.Visible;
+                    button.Opacity = 0.30;
                     break;
                 case CooldownButtonState.Ready:
-                    log.Debug($"Button {button.Content} ready.");
+                    log.Debug($"Button {button.Content} is now READY.");
                     button.Visibility = Visibility.Visible;
+                    button.Opacity = 1.0;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(buttonState), buttonState, null);
@@ -159,8 +164,11 @@ namespace Cooldowns
             var processName = process.ProcessName;
             
             log.Debug($"Focus changed {processName}");
-            if (processName.Contains("Visual Studio")) return;
+
+            // ignore ourselves and the compiler.
             if (processName.Contains("Cooldowns")) return;
+            if (processName.Contains("Visual Studio")) return;
+            if (processName.Contains("Rider")) return;
             
             Application.Current?.Dispatcher?.Invoke(() =>
             {
@@ -203,7 +211,6 @@ namespace Cooldowns
         {
             switch (e.KeyCode)
             {
-                // todo remove pause? It's not actually useful. Quick way to stop chat spam maybe?
                 case VirtualKeyCode.PAUSE:
                     ToggleEnabled();
                     return;
@@ -237,22 +244,6 @@ namespace Cooldowns
                 case VirtualKeyCode.F8:
                     r.ChangeMode();
                     break;
-
-                case VirtualKeyCode.VK_Q:
-                    q.Press();
-                    break;
-                
-                case VirtualKeyCode.VK_W:
-                    w.Press();
-                    break;
-                
-                case VirtualKeyCode.VK_E:
-                    this.e.Press();
-                    break;
-                
-                case VirtualKeyCode.VK_R:
-                    r.Press();
-                    break;
                 
                 default:
                     return;
@@ -270,6 +261,9 @@ namespace Cooldowns
             
             keyboardListener.UnHookKeyboard();
             keyboardListener.OnKeyPressed -= OnKeyPressed;
+
+            //cooldownTimer.Stop();
+            cooldownTimer.Dispose();
         }
     }
 }

@@ -1,14 +1,12 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using NLog;
+using JetBrains.Annotations;
 
 namespace Cooldowns
 {
     public sealed class ToolbarViewModel: INotifyPropertyChanged
     {
-        private readonly Logger log = LogManager.GetCurrentClassLogger();
-
         private string statusText = string.Empty;
 
         [NotNull]

@@ -13,10 +13,11 @@ namespace Cooldowns.Tests.Fixtures
         protected readonly IKeyboard Keyboard = Substitute.For<IKeyboard>();
         protected readonly IScreen Screen = Substitute.For<IScreen>();
         protected readonly ICooldownTimer CooldownTimer = Substitute.For<ICooldownTimer>();
+        protected readonly IDispatcher Dispatcher = new FakeDispatcher();
 
         protected Key Config = new();
 
-        protected CooldownButtonState ExpectedState = CooldownButtonState.Disabled;
+        protected CooldownButtonState ExpectedState = CooldownButtonState.Ready;
 
         protected void AssertButtonCooldownState(object? _, CooldownButtonState actualState)
         {
