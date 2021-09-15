@@ -1,32 +1,45 @@
 using System;
 using System.Threading;
-using JetBrains.Annotations;
+using NLog;
 
 namespace Cooldowns.Domain.Buttons
 {
     public sealed class CooldownTimer : ICooldownTimer
     {
-        private const int FirstCheckDelay = 1000;
+        private const int FirstCheckDelay = 1000; // todo probably don't need this
         private const int ButtonCheckInterval = 100;
+        private readonly Logger log = LogManager.GetCurrentClassLogger();
 
-        private readonly Timer timer;
+        private Timer? timer;
 
-        [NotNull]
         public event EventHandler? Ticked;
 
-        public CooldownTimer()
+        public void Start()
         {
+            if (timer != null)
+            {
+                Stop();
+            }
+
+            log.Debug($"Timer started at {DateTime.UtcNow}");
             timer = new Timer(OnTicked, null, FirstCheckDelay, ButtonCheckInterval);
         }
 
-        private void OnTicked(object? state)
+        public void Stop()
         {
-            Ticked?.Invoke(this, EventArgs.Empty);
+            log.Debug($"Timer stopped at {DateTime.UtcNow}");
+            timer?.Dispose();
+            timer = null;
         }
 
         public void Dispose()
         {
             timer?.Dispose();
+        }
+
+        private void OnTicked(object? state)
+        {
+            Ticked?.Invoke(this, EventArgs.Empty);
         }
     }
 }

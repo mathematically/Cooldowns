@@ -4,7 +4,6 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
-using WindowsInput.Native;
 using Cooldowns.Domain;
 using Cooldowns.Domain.Buttons;
 using Cooldowns.Domain.Config;
@@ -13,26 +12,19 @@ using Microsoft.Extensions.Options;
 using NLog;
 using NLog.Config;
 using NLog.Targets;
+using WindowsInput.Native;
 
 namespace Cooldowns
 {
     public partial class Toolbar : Window
     {
-        private enum AppState
-        {
-            Off, On
-        }
-
         private readonly Logger log = LogManager.GetCurrentClassLogger();
-
-        private readonly SolidColorBrush goldenrodBrush = new(Colors.DarkGoldenrod);
-        private readonly SolidColorBrush blackBrush = new(Colors.Black);
 
         private static void ConfigureLogging()
         {
             var config = new LoggingConfiguration();
-            
-            var fileTarget = new FileTarget("logfile") {FileName = "logs.txt", DeleteOldFileOnStartup = true};
+
+            var fileTarget = new FileTarget("logfile") { FileName = "logs.txt", DeleteOldFileOnStartup = true };
             var consoleTarget = new ConsoleTarget("logconsole");
 
             config.AddRule(LogLevel.Info, LogLevel.Fatal, consoleTarget);
@@ -41,52 +33,100 @@ namespace Cooldowns
             LogManager.Configuration = config;
         }
 
-        private AppState state = AppState.On;
+        private void FreezeButtons()
+        {
+            goldenrodBrush.Freeze();
+            blackBrush.Freeze();
+            transparentBrush.Freeze();
+        }
 
-        private bool IsAppOff() => state == AppState.Off;
-        private bool IsAppOn() => state == AppState.On;
+        private readonly SolidColorBrush blackBrush = new(Colors.Black);
+        private readonly SolidColorBrush goldenrodBrush = new(Colors.DarkGoldenrod);
+        private readonly SolidColorBrush transparentBrush = new(Colors.Transparent);
 
-        private double PosX { get; }
-        private double PosY { get; }
-
-        private readonly IKeyboardListener keyboardListener;
-        private readonly IKeyboard keyboard;
         private readonly ICooldownTimer cooldownTimer;
+        private readonly IKeyboard keyboard;
+        private readonly IKeyboardListener keyboardListener;
 
         private readonly CooldownButton q, w, e, r;
         private readonly ToolbarViewModel viewModel = new();
 
-        public Toolbar(IOptions<CooldownsApp> configuration, IDispatcher dispatcher, IScreen screen, IKeyboardListener keyboardListener, IKeyboard keyboard)
+        private readonly double PosX;
+        private readonly double PosY;
+
+        private AppState state = AppState.On;
+
+        public Toolbar(IOptions<Config> configuration, IDispatcher dispatcher, IScreen screen,
+            IKeyboardListener keyboardListener, IKeyboard keyboard)
         {
             this.keyboardListener = keyboardListener;
             this.keyboard = keyboard;
 
             InitializeComponent();
             ConfigureLogging();
+            FreezeButtons();
 
             DataContext = viewModel;
             cooldownTimer = new CooldownTimer();
 
-            q = ButtonFactory(ButtonQ, configuration, dispatcher, screen, cooldownTimer, configuration.Value.Q);
-            w = ButtonFactory(ButtonW, configuration, dispatcher, screen, cooldownTimer, configuration.Value.W);
-            e = ButtonFactory(ButtonE, configuration, dispatcher, screen, cooldownTimer, configuration.Value.E);
-            r = ButtonFactory(ButtonR, configuration, dispatcher, screen, cooldownTimer, configuration.Value.R);
+            q = ButtonFactory(ButtonQ, configuration.Value.Toolbar, dispatcher, screen, cooldownTimer, configuration.Value.Q);
+            w = ButtonFactory(ButtonW, configuration.Value.Toolbar, dispatcher, screen, cooldownTimer, configuration.Value.W);
+            e = ButtonFactory(ButtonE, configuration.Value.Toolbar, dispatcher, screen, cooldownTimer, configuration.Value.E);
+            r = ButtonFactory(ButtonR, configuration.Value.Toolbar, dispatcher, screen, cooldownTimer, configuration.Value.R);
 
             PosX = configuration.Value.Toolbar.PosX;
             PosY = configuration.Value.Toolbar.PosY;
         }
 
-        private CooldownButton ButtonFactory(Button button, IOptions<CooldownsApp> configuration,
-            IDispatcher dispatcher, IScreen screen, ICooldownTimer cooldownTimer, Key key)
+        // todo push some of this down into view model / models?
+
+        private CooldownButton ButtonFactory(Button button, ToolbarConfig toolbar,
+            IDispatcher dispatcher, IScreen screen, ICooldownTimer cooldownTimer, KeyConfig key)
         {
             var cooldownButton = new CooldownButton(screen, keyboard, dispatcher, cooldownTimer, key);
+
             cooldownButton.ButtonStateChanged += (_, buttonState) => OnToolbarButtonStateChanged(button, buttonState);
             cooldownButton.ButtonModeChanged += (_, buttonMode) => OnToolbarButtonModeChanged(button, buttonMode);
 
             button.Content = key.Label;
-            button.FontSize = configuration.Value.Toolbar.FontSize;
+            button.FontSize = toolbar.FontSize;
 
             return cooldownButton;
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            ResetWindowPosition();
+
+            keyboardListener.OnKeyPressed += OnKeyPressed;
+            keyboardListener.HookKeyboard();
+
+            Automation.AddAutomationFocusChangedEventHandler(OnFocusChanged);
+        }
+
+        private void ResetWindowPosition()
+        {
+            Left = SystemParameters.PrimaryScreenWidth * PosX - Width * 0.5;
+            Top = SystemParameters.FullPrimaryScreenHeight * PosY - Height * 0.5;
+        }
+
+        private void OnFocusChanged(object sender, AutomationFocusChangedEventArgs e)
+        {
+            var focusedElement = sender as AutomationElement;
+            if (focusedElement == null) return;
+
+            using Process process = Process.GetProcessById(focusedElement.Current.ProcessId);
+            var processName = process.ProcessName;
+
+            log.Debug($"Focus changed {processName}");
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (processName.Contains("Epoch") || processName.Contains("Cooldowns"))
+                    SetAppOn();
+                else
+                    SetAppOff();
+            });
         }
 
         private void OnToolbarButtonStateChanged(Button button, CooldownButtonState buttonState)
@@ -122,132 +162,79 @@ namespace Cooldowns
             switch (buttonMode)
             {
                 case CooldownButtonMode.Disabled:
-                    button.Visibility = Visibility.Hidden;
+                    // Button state changes visibility only, mode switches colours to keep the events
+                    // completely separate. Hence we don't use Visibility here but set everything transparent.
+                    button.BorderBrush = transparentBrush;
+                    button.Foreground = transparentBrush;
+                    button.Background = transparentBrush;
                     break;
                 case CooldownButtonMode.Manual:
+                    button.BorderBrush = blackBrush;
                     button.Foreground = blackBrush;
                     button.Background = goldenrodBrush;
-                    button.Visibility = Visibility.Visible;
                     break;
                 case CooldownButtonMode.AutoCast:
+                    button.BorderBrush = blackBrush;
                     button.Foreground = goldenrodBrush;
-                    button.Background = blackBrush;
-                    button.Visibility = Visibility.Visible;
+                    button.Background = transparentBrush;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(buttonMode), buttonMode, null);
             }
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        private void OnKeyPressed(object? _, KeyPressArgs args)
         {
-            ResetWindowPosition();
-            
-            keyboardListener.OnKeyPressed += OnKeyPressed;
-            keyboardListener.HookKeyboard();
-            
-            Automation.AddAutomationFocusChangedEventHandler(OnFocusChanged);
-        }
+            if (CheckModeKey(args.KeyCode, q)) return;
+            if (CheckModeKey(args.KeyCode, w)) return;
+            if (CheckModeKey(args.KeyCode, e)) return;
+            if (CheckModeKey(args.KeyCode, r)) return;
 
-        private void ResetWindowPosition()
-        {
-            Left = SystemParameters.PrimaryScreenWidth * PosX - Width * 0.5;
-            Top = SystemParameters.FullPrimaryScreenHeight * PosY - Height * 0.5;
-        }
-
-        private void OnFocusChanged(object sender, AutomationFocusChangedEventArgs e)
-        {
-            var focusedElement = sender as AutomationElement;
-            if (focusedElement == null) return;
-            
-            using var process = Process.GetProcessById(focusedElement.Current.ProcessId);
-            var processName = process.ProcessName;
-            
-            log.Debug($"Focus changed {processName}");
-
-            // ignore ourselves and the compiler.
-            if (processName.Contains("Cooldowns")) return;
-            if (processName.Contains("Visual Studio")) return;
-            if (processName.Contains("Rider")) return;
-            
-            Application.Current?.Dispatcher?.Invoke(() =>
+            switch (args.KeyCode)
             {
-                if (processName.Contains("Epoch"))
-                {
-                    SetAppOn();
-                }
-                else
-                {
-                    SetAppOff();
-                }
-            });
+                case VirtualKeyCode.SCROLL:
+                    Application.Current.Shutdown();
+                    return;
+                case VirtualKeyCode.PAUSE:
+                    ToggleEnabled();
+                    return;
+                default:
+                    return;
+            }
+        }
+
+        private static bool CheckModeKey(VirtualKeyCode pressedKeyCode, CooldownButton cooldownButton)
+        {
+            if (pressedKeyCode != cooldownButton.ModeKeyCode) return false;
+            cooldownButton.ChangeMode();
+            return true;
         }
 
         private void ToggleEnabled()
         {
-            if (IsAppOff())
+            switch (state)
             {
-                SetAppOn();
-            }
-            else if (IsAppOn())
-            {
-                SetAppOff();
+                case AppState.Off:
+                    log.Debug($"App switched OFF at {DateTime.UtcNow}");
+                    SetAppOn();
+                    break;
+                case AppState.On:
+                    log.Debug($"App switched ON at {DateTime.UtcNow}");
+                    SetAppOff();
+                    break;
             }
         }
 
         private void SetAppOn()
         {
             state = AppState.On;
-            Visibility = Visibility.Visible;
+            cooldownTimer.Start();
         }
-        
+
         private void SetAppOff()
         {
             state = AppState.Off;
-            Visibility = Visibility.Collapsed;
-        }
-
-        private void OnKeyPressed(object? sender, KeyPressArgs e)
-        {
-            switch (e.KeyCode)
-            {
-                case VirtualKeyCode.PAUSE:
-                    ToggleEnabled();
-                    return;
-                case VirtualKeyCode.SCROLL:
-                    Application.Current.Shutdown();
-                    return;
-            }
-
-            if (IsAppOff()) return;
-            
-            ProcessKeys(e);
-        }
-
-        private void ProcessKeys(KeyPressArgs args)
-        {
-            switch (args.KeyCode)
-            {
-                // todo are these configurable or not?
-                case VirtualKeyCode.F5:
-                    q.ChangeMode();
-                    break;
-
-                case VirtualKeyCode.F6:
-                    w.ChangeMode();
-                    break;
-
-                case VirtualKeyCode.F7:
-                    e.ChangeMode();
-                    break;
-
-                case VirtualKeyCode.F8:
-                    r.ChangeMode();
-                    break;
-                
-                default:
-                    return;
-            }
+            cooldownTimer.Stop();
         }
 
         private void OnClosed(object? sender, EventArgs args)
@@ -256,14 +243,20 @@ namespace Cooldowns
             w.Dispose();
             e.Dispose();
             r.Dispose();
-            
+
             Automation.RemoveAutomationFocusChangedEventHandler(OnFocusChanged);
-            
+
             keyboardListener.UnHookKeyboard();
             keyboardListener.OnKeyPressed -= OnKeyPressed;
 
-            //cooldownTimer.Stop();
+            cooldownTimer.Stop();
             cooldownTimer.Dispose();
+        }
+
+        private enum AppState
+        {
+            Off,
+            On
         }
     }
 }

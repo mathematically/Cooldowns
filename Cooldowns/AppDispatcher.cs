@@ -2,7 +2,7 @@
 using Cooldowns.Domain;
 using static System.Windows.Application;
 
-namespace Cooldowns.Windows
+namespace Cooldowns
 {
     public class AppDispatcher : IDispatcher
     {

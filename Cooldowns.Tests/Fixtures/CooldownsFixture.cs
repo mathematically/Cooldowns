@@ -15,7 +15,7 @@ namespace Cooldowns.Tests.Fixtures
         protected readonly ICooldownTimer CooldownTimer = Substitute.For<ICooldownTimer>();
         protected readonly IDispatcher Dispatcher = new FakeDispatcher();
 
-        protected Key Config = new();
+        protected KeyConfig KeyConfig = new();
 
         protected CooldownButtonState ExpectedState = CooldownButtonState.Ready;
 
@@ -26,7 +26,7 @@ namespace Cooldowns.Tests.Fixtures
 
         protected void SetScreenPixel(Color color)
         {
-            Screen.GetPixelColor(Config.DetectX, Config.DetectY).Returns(color);
+            Screen.GetPixelColor(KeyConfig.DetectX, KeyConfig.DetectY).Returns(color);
         }
     }
 }

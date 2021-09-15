@@ -1,6 +1,6 @@
 ﻿namespace Cooldowns.Domain.Config
 {
-    public class Key
+    public class KeyConfig
     {
         public string Label { get; init; } = null!;
         public string ActionKey { get; init; } = null!;

@@ -14,11 +14,7 @@ namespace Cooldowns
     {
         private readonly IHost host;
  
-        // This is somewhat pointless in the context of this app, but I have not written WPF
-        // since .NET Core came about so I wanted to play with this stuff.
-        
-        // The settings/config is the most useful, the DI stuff a bit overkill.
-        // Not using the logging (no file logs?) just a normal simple NLog to console and file.
+        // This a bit OTT for a Windows app but wanted to do some latest .NET Core
         
         public App()
         {
@@ -30,7 +26,7 @@ namespace Cooldowns
 
         private void ConfigureServices(IConfiguration configuration, IServiceCollection services)
         {
-            services.Configure<CooldownsApp>(configuration)
+            services.Configure<Config>(configuration)
                     .AddSingleton<IKeyboardListener, Win32KeyboardListener>()
                     .AddSingleton<IKeyboard, KeyboardSimulator>()
                     .AddSingleton<IDispatcher, AppDispatcher>()

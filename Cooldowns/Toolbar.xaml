@@ -20,9 +20,8 @@
     </b:Interaction.Behaviors>
     <Window.Resources>
         <Style TargetType="{x:Type Button}">
-            <Setter Property="Width" Value="{Binding RelativeSource={x:Static RelativeSource.Self}, Path=ActualHeight}" />
             <Setter Property="Margin" Value="0" />
-            <Setter Property="Padding" Value="0" />
+            <Setter Property="Padding" Value="2" />
             <Setter Property="BorderBrush" Value="Black" />
             <Setter Property="Foreground" Value="Black" />
             <Setter Property="Background" Value="DarkGoldenrod" />
@@ -34,14 +33,14 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="DarkGoldenrod" />
             <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="Opacity" Value="0.0" />
-            <Setter Property="FontWeight" Value="Black" />
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="ExtraBlack" />
             <Style.Triggers>
                 <EventTrigger RoutedEvent="Binding.TargetUpdated">
                     <BeginStoryboard>
                         <Storyboard>
-                            <DoubleAnimation Storyboard.TargetProperty="(TextBlock.Opacity)" From="1.0" To="0.0" Duration="0:0:3"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(TextBlock.Opacity)" From="1.0" To="0.0" Duration="0:0:4"/>
                         </Storyboard>
                     </BeginStoryboard>
                 </EventTrigger>
@@ -51,13 +50,13 @@
     <Window.DataContext>
         <local:ToolbarViewModel />
     </Window.DataContext>
-    <StackPanel Orientation="Vertical">
+    <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch">
         <UniformGrid Rows="1">
             <Button Name="ButtonQ" Content="Q" />
             <Button Name="ButtonW" Content="W" />
             <Button Name="ButtonE" Content="E" />
             <Button Name="ButtonR" Content="R" />
         </UniformGrid>
-        <TextBlock Style="{StaticResource TextBlockStyle}" Text="{Binding StatusText, NotifyOnTargetUpdated=True}" />
+        <TextBlock Style="{StaticResource TextBlockStyle}" MinWidth="200" Text="{Binding StatusText, NotifyOnTargetUpdated=True}" />
     </StackPanel>
 </Window>
