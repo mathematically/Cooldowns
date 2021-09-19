@@ -4,6 +4,6 @@ namespace Cooldowns.Domain.Keyboard
 {
     public interface IKeyboard
     {
-        void PressKey(VirtualKeyCode key, int delay = 15);
+        void PressKey(VirtualKeyCode key, int delay = 0);
     }
 }

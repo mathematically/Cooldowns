@@ -33,33 +33,7 @@ namespace Cooldowns.Domain.Buttons
         private bool isScreenActive;
         private bool isScreenAvailable;
         private bool isScreenCooldown;
-
-        public CooldownButton(IScreen screen, IKeyboard keyboard, IDispatcher dispatcher, ICooldownTimer cooldownTimer, KeyConfig keyConfig)
-        {
-            this.screen = screen ?? throw new ArgumentNullException(nameof(screen));
-            this.keyboard = keyboard ?? throw new ArgumentNullException(nameof(keyboard));
-            this.dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
-            this.cooldownTimer = cooldownTimer ?? throw new ArgumentNullException(nameof(cooldownTimer));
-
-            this.keyConfig = keyConfig;
-
-            // todo should check this really to catch errors in the settings file.
-            ActionKeyCode = Enum.Parse<VirtualKeyCode>(keyConfig.ActionKey);
-            ModeKeyCode = Enum.Parse<VirtualKeyCode>(keyConfig.ModeKey);
-
-            cooldownTimer.Ticked += OnTimerTicked;
-
-            OnButtonModeChanged(buttonMode);
-            OnButtonStateChanged(buttonState);
-        }
-
-        public VirtualKeyCode ActionKeyCode { get; }
-        public VirtualKeyCode ModeKeyCode { get; }
-
-        public void Dispose()
-        {
-            cooldownTimer.Ticked -= OnTimerTicked;
-        }
+        private bool hasAutocastedThisCycle = false;
 
         private static bool IsSkillAvailable(Color p)
         {
@@ -82,6 +56,27 @@ namespace Cooldowns.Domain.Buttons
 
         public event EventHandler<CooldownButtonState>? ButtonStateChanged;
         public event EventHandler<CooldownButtonMode>? ButtonModeChanged;
+
+        public VirtualKeyCode ActionKeyCode { get; }
+        public VirtualKeyCode ModeKeyCode { get; }
+
+        public CooldownButton(IScreen screen, IKeyboard keyboard, IDispatcher dispatcher, ICooldownTimer cooldownTimer, KeyConfig keyConfig)
+        {
+            this.screen = screen ?? throw new ArgumentNullException(nameof(screen));
+            this.keyboard = keyboard ?? throw new ArgumentNullException(nameof(keyboard));
+            this.dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+            this.cooldownTimer = cooldownTimer ?? throw new ArgumentNullException(nameof(cooldownTimer));
+
+            this.keyConfig = keyConfig;
+
+            ActionKeyCode = Enum.Parse<VirtualKeyCode>(keyConfig.ActionKey);
+            ModeKeyCode = Enum.Parse<VirtualKeyCode>(keyConfig.ModeKey);
+
+            cooldownTimer.Ticked += OnTimerTicked;
+
+            OnButtonModeChanged(buttonMode);
+            OnButtonStateChanged(buttonState);
+        }
 
         private void OnButtonStateChanged(CooldownButtonState state)
         {
@@ -127,6 +122,7 @@ namespace Cooldowns.Domain.Buttons
         private void SetAutocastMode()
         {
             log.Debug($"Autocast enabled for {keyConfig.ActionKey}");
+            hasAutocastedThisCycle = false;
             OnButtonModeChanged(CooldownButtonMode.AutoCast);
             OnButtonStateChanged(CooldownButtonState.Ready);
         }
@@ -170,11 +166,17 @@ namespace Cooldowns.Domain.Buttons
         {
             GetCurrentButtonScreenState();
 
-            if (isScreenAvailable)
+            if (isScreenCooldown && hasAutocastedThisCycle)
+            {
+                hasAutocastedThisCycle = false;
+            }
+            else if (isScreenAvailable && !hasAutocastedThisCycle)
             {
                 log.Debug($"Autocasting {keyConfig.ActionKey}");
                 keyboard.PressKey(ActionKeyCode);
+                hasAutocastedThisCycle = true;
             }
+            
         }
 
         private void GetCurrentButtonScreenState()
@@ -184,6 +186,7 @@ namespace Cooldowns.Domain.Buttons
             isScreenAvailable = IsSkillAvailable(pixelColor);
             isScreenCooldown = IsSkillOnCooldown(pixelColor);
             isScreenActive = IsSkillActive(pixelColor);
+
 
 #if DEBUG
             if (isScreenAvailable && buttonState is not CooldownButtonState.Ready)
@@ -199,6 +202,11 @@ namespace Cooldowns.Domain.Buttons
                 log.Debug(
                     $"{ActionKeyCode} {keyConfig.DetectX} {keyConfig.DetectY} UNKNOWN colour detected {pixelColor.R} {pixelColor.G} {pixelColor.B}");
 #endif
+        }
+
+        public void Dispose()
+        {
+            cooldownTimer.Ticked -= OnTimerTicked;
         }
     }
 }

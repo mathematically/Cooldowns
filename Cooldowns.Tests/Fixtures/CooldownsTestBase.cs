@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Cooldowns.Tests.Fixtures
 {
-    public class CooldownsFixture
+    public class CooldownsTestBase
     {
         protected readonly IKeyboard Keyboard = Substitute.For<IKeyboard>();
         protected readonly IScreen Screen = Substitute.For<IScreen>();
@@ -18,15 +18,39 @@ namespace Cooldowns.Tests.Fixtures
         protected KeyConfig KeyConfig = new();
 
         protected CooldownButtonState ExpectedState = CooldownButtonState.Ready;
+        protected CooldownButtonMode ExpectedMode = CooldownButtonMode.Manual;
+
+        protected void Configure()
+        {
+            KeyConfig = new KeyConfig
+            {
+                Label = "Q",
+                ActionKey = "VK_Q",
+                ModeKey = "F5",
+                
+                DetectX = 100,
+                DetectY = 200,
+            };
+        }
 
         protected void AssertButtonCooldownState(object? _, CooldownButtonState actualState)
         {
             Assert.Equal(ExpectedState, actualState);
         }
 
-        protected void SetScreenPixel(Color color)
+        protected void AssertButtonCooldownMode(object? _, CooldownButtonMode actualMode)
         {
-            Screen.GetPixelColor(KeyConfig.DetectX, KeyConfig.DetectY).Returns(color);
+            Assert.Equal(ExpectedMode, actualMode);
+        }
+
+        private void SetScreenPixel(Color color, int x, int y)
+        {
+            Screen.GetPixelColor(x, y).Returns(color);
+        }
+
+        protected void SetButtonPixel(Color color)
+        {
+            SetScreenPixel(color, KeyConfig.DetectX, KeyConfig.DetectY);
         }
     }
 }

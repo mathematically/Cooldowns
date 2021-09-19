@@ -12,7 +12,7 @@ namespace Cooldowns.Domain.Keyboard
             inputSimulator = new InputSimulator();
         }
 
-        public void PressKey(VirtualKeyCode key, int delay = 15)
+        public void PressKey(VirtualKeyCode key, int delay = 0)
         {
             inputSimulator
                 .Keyboard.KeyDown(key)
