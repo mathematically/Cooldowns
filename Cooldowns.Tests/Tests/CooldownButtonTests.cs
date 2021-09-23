@@ -80,32 +80,13 @@ namespace Cooldowns.Tests.Tests
         {
             ExpectedMode = CooldownButtonMode.AutoCast;
             cooldownButton.ChangeMode();
-            CooldownTimer.Ticked += Raise.Event();
-
-            SetButtonPixel(CooldownButton.SkillAvailableColor);
-            CooldownTimer.Ticked += Raise.Event();
-
-            Keyboard.Received(1).PressKey(VirtualKeyCode.VK_Q);
-        }
-
-        [Fact]
-        public void Autocast_only_presses_button_once_per_cycle()
-        {
-            ExpectedMode = CooldownButtonMode.AutoCast;
-            cooldownButton.ChangeMode();
-            SetButtonPixel(CooldownButton.SkillAvailableColor);
-            CooldownTimer.Ticked += Raise.Event();
-
-            CooldownTimer.Ticked += Raise.Event();
-            Keyboard.Received(1).PressKey(VirtualKeyCode.VK_Q);
-
             SetButtonPixel(CooldownButton.SkillCooldownColor);
             CooldownTimer.Ticked += Raise.Event();
-            Keyboard.Received(1).PressKey(VirtualKeyCode.VK_Q);
 
             SetButtonPixel(CooldownButton.SkillAvailableColor);
             CooldownTimer.Ticked += Raise.Event();
-            Keyboard.Received(2).PressKey(VirtualKeyCode.VK_Q);
+
+            Keyboard.Received(1).PressKey(VirtualKeyCode.VK_Q);
         }
 
         public void Dispose()

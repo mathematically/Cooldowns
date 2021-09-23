@@ -184,7 +184,6 @@ namespace Cooldowns.Domain.Buttons
             isScreenCooldown = IsSkillOnCooldown(pixelColor);
             isScreenActive = IsSkillActive(pixelColor);
 
-#if DEBUG
             if (isScreenAvailable && lastDetected is not CooldownButtonState.Ready)
             {
                 log.Debug($"{ActionKeyCode} is now AVAILABLE {pixelColor.R} {pixelColor.G} {pixelColor.B}");
@@ -204,11 +203,15 @@ namespace Cooldowns.Domain.Buttons
             if (detected.Contains(pixelColor)) return;
             log.Debug($"{ActionKeyCode} UNKNOWN colour detected {pixelColor.R} {pixelColor.G} {pixelColor.B}");
             detected.Add(pixelColor);
-#endif
         }
 
         public void Dispose()
         {
+            foreach (var pixelColor in detected)
+            {
+                log.Debug($"{ActionKeyCode} detected colour {pixelColor.R} {pixelColor.G} {pixelColor.B}");
+            }            
+
             cooldownTimer.Ticked -= OnTimerTicked;
         }
     }
