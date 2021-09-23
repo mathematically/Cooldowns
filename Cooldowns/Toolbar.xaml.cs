@@ -123,9 +123,13 @@ namespace Cooldowns
             Application.Current.Dispatcher.Invoke(() =>
             {
                 if (processName.Contains("Epoch") || processName.Contains("Cooldowns"))
+                {
                     SetAppOn();
+                }
                 else
+                {
                     SetAppOff();
+                }
             });
         }
 
@@ -134,16 +138,16 @@ namespace Cooldowns
             switch (buttonState)
             {
                 case CooldownButtonState.Cooldown:
-                    log.Debug($"Button {button.Content} is on COOLDOWN.");
+                    log.Debug($"Toolbar Button {button.Content} is on COOLDOWN.");
                     button.Visibility = Visibility.Hidden;
                     break;
                 case CooldownButtonState.Active:
-                    log.Debug($"Button {button.Content} skill is now ACTIVE.");
+                    log.Debug($"Toolbar Button {button.Content} skill is now ACTIVE.");
                     button.Visibility = Visibility.Visible;
                     button.Opacity = 0.30;
                     break;
                 case CooldownButtonState.Ready:
-                    log.Debug($"Button {button.Content} is now READY.");
+                    log.Debug($"Toolbar Button {button.Content} is now READY.");
                     button.Visibility = Visibility.Visible;
                     button.Opacity = 1.0;
                     break;
@@ -154,7 +158,7 @@ namespace Cooldowns
 
         private void OnToolbarButtonModeChanged(Button button, CooldownButtonMode buttonMode)
         {
-            string message = $"Button {button.Content} {buttonMode.ToString().ToUpper()}";
+            string message = $"Button {button.Content} mode is now {buttonMode.ToString().ToUpper()}";
 
             viewModel.StatusText = message;
             log.Debug(message);
@@ -162,8 +166,8 @@ namespace Cooldowns
             switch (buttonMode)
             {
                 case CooldownButtonMode.Disabled:
-                    // Button state changes visibility only, mode switches colours to keep the events
-                    // completely separate. Hence we don't use Visibility here but set everything transparent.
+                    // Button state changes visibility only, mode switches colours to keep the events completely separate.
+                    // Hence we don't use Visibility here but set everything transparent.
                     button.BorderBrush = transparentBrush;
                     button.Foreground = transparentBrush;
                     button.Background = transparentBrush;
@@ -215,11 +219,11 @@ namespace Cooldowns
             switch (state)
             {
                 case AppState.Off:
-                    log.Debug($"App switched OFF at {DateTime.UtcNow}");
+                    log.Debug($"App manually switched OFF at {DateTime.UtcNow}");
                     SetAppOn();
                     break;
                 case AppState.On:
-                    log.Debug($"App switched ON at {DateTime.UtcNow}");
+                    log.Debug($"App manually switched ON at {DateTime.UtcNow}");
                     SetAppOff();
                     break;
             }

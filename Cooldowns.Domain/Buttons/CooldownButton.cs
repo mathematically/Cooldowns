@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using Cooldowns.Domain.Config;
 using Cooldowns.Domain.Keyboard;
@@ -33,7 +34,6 @@ namespace Cooldowns.Domain.Buttons
         private bool isScreenActive;
         private bool isScreenAvailable;
         private bool isScreenCooldown;
-        private bool hasAutocastedThisCycle = false;
 
         private static bool IsSkillAvailable(Color p)
         {
@@ -81,6 +81,7 @@ namespace Cooldowns.Domain.Buttons
         private void OnButtonStateChanged(CooldownButtonState state)
         {
             if (buttonState == state) return;
+            log.Debug($"{keyConfig.ActionKey} {state}");
             buttonState = state;
             dispatcher.BeginInvoke(() => ButtonStateChanged?.Invoke(this, buttonState));
         }
@@ -122,7 +123,6 @@ namespace Cooldowns.Domain.Buttons
         private void SetAutocastMode()
         {
             log.Debug($"Autocast enabled for {keyConfig.ActionKey}");
-            hasAutocastedThisCycle = false;
             OnButtonModeChanged(CooldownButtonMode.AutoCast);
             OnButtonStateChanged(CooldownButtonState.Ready);
         }
@@ -166,18 +166,15 @@ namespace Cooldowns.Domain.Buttons
         {
             GetCurrentButtonScreenState();
 
-            if (isScreenCooldown && hasAutocastedThisCycle)
+            if (isScreenAvailable)
             {
-                hasAutocastedThisCycle = false;
-            }
-            else if (isScreenAvailable && !hasAutocastedThisCycle)
-            {
-                log.Debug($"Autocasting {keyConfig.ActionKey}");
+                log.Debug($"AUTCASTING {keyConfig.ActionKey}");
                 keyboard.PressKey(ActionKeyCode);
-                hasAutocastedThisCycle = true;
             }
-            
         }
+
+        private CooldownButtonState lastDetected = CooldownButtonState.Cooldown;
+        private readonly List<Color> detected = new();
 
         private void GetCurrentButtonScreenState()
         {
@@ -187,20 +184,26 @@ namespace Cooldowns.Domain.Buttons
             isScreenCooldown = IsSkillOnCooldown(pixelColor);
             isScreenActive = IsSkillActive(pixelColor);
 
-
 #if DEBUG
-            if (isScreenAvailable && buttonState is not CooldownButtonState.Ready)
+            if (isScreenAvailable && lastDetected is not CooldownButtonState.Ready)
+            {
                 log.Debug($"{ActionKeyCode} is now AVAILABLE {pixelColor.R} {pixelColor.G} {pixelColor.B}");
-
-            if (isScreenCooldown && buttonState is not CooldownButtonState.Cooldown)
+                lastDetected = CooldownButtonState.Ready;
+            }
+            else if (isScreenCooldown && lastDetected is not CooldownButtonState.Cooldown)
+            {
                 log.Debug($"{ActionKeyCode} is now on COOLDOWN {pixelColor.R} {pixelColor.G} {pixelColor.B}");
+                lastDetected = CooldownButtonState.Cooldown;
+            }
+            else if (isScreenActive && lastDetected is not CooldownButtonState.Active)
+            {
+                log.Debug($"{ActionKeyCode} is now ACTIVE {pixelColor.R} {pixelColor.G} {pixelColor.B}");
+                lastDetected = CooldownButtonState.Active;
+            }
 
-            if (isScreenActive && buttonState is not CooldownButtonState.Active)
-                log.Debug($"{ActionKeyCode} is currently ACTIVE {pixelColor.R} {pixelColor.G} {pixelColor.B}");
-
-            if (!isScreenAvailable && !isScreenCooldown && !isScreenActive)
-                log.Debug(
-                    $"{ActionKeyCode} {keyConfig.DetectX} {keyConfig.DetectY} UNKNOWN colour detected {pixelColor.R} {pixelColor.G} {pixelColor.B}");
+            if (detected.Contains(pixelColor)) return;
+            log.Debug($"{ActionKeyCode} UNKNOWN colour detected {pixelColor.R} {pixelColor.G} {pixelColor.B}");
+            detected.Add(pixelColor);
 #endif
         }
 

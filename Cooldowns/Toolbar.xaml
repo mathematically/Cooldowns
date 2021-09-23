@@ -33,7 +33,6 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="DarkGoldenrod" />
             <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="Opacity" Value="0.0" />
             <Setter Property="FontWeight" Value="ExtraBlack" />
             <Style.Triggers>
