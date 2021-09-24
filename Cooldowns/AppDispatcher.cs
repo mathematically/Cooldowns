@@ -10,5 +10,10 @@ namespace Cooldowns
         {
             Current.Dispatcher.BeginInvoke(action);
         }
+
+        public void Invoke(Action action)
+        {
+            Current.Dispatcher.Invoke(action);
+        }
     }
 }

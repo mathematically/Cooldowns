@@ -13,7 +13,7 @@ namespace Cooldowns.Windows
                 graphics.CopyFromScreen(new Point(x, y), new Point(0, 0), new Size(1, 1));
             }
 
-            return bitmap.GetPixel(0, 0);
+            return bitmap.GetPixel(0, 0);;
         }
     }
 }

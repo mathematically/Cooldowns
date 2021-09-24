@@ -45,12 +45,23 @@
                 </EventTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="StatusIndicatorStyle" TargetType="{x:Type TextBlock}">
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="Background" Value="DarkGoldenrod" />
+            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Opacity" Value="1.0" />
+            <Setter Property="FontWeight" Value="ExtraBlack" />
+        </Style>
     </Window.Resources>
     <Window.DataContext>
         <local:ToolbarViewModel />
     </Window.DataContext>
     <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch">
         <UniformGrid Rows="1">
+            <Button Name="SigilsStatusIndicator" Content="-" />
             <Button Name="ButtonQ" Content="Q" />
             <Button Name="ButtonW" Content="W" />
             <Button Name="ButtonE" Content="E" />

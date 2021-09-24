@@ -6,13 +6,19 @@ namespace Cooldowns.Domain.Buttons
 {
     public sealed class CooldownTimer : ICooldownTimer
     {
-        private const int FirstCheckDelay = 1000; // todo probably don't need this
-        private const int ButtonCheckInterval = 100;
+        private readonly int firstCheckDelay;
+        private readonly int buttonCheckInterval;
         private readonly Logger log = LogManager.GetCurrentClassLogger();
 
         private Timer? timer;
 
         public event EventHandler? Ticked;
+
+        public CooldownTimer(int buttonCheckInterval, int firstCheckDelay = 1000)
+        {
+            this.buttonCheckInterval = buttonCheckInterval;
+            this.firstCheckDelay = firstCheckDelay;
+        }
 
         public void Start()
         {
@@ -22,7 +28,7 @@ namespace Cooldowns.Domain.Buttons
             }
 
             log.Debug($"Timer started at {DateTime.UtcNow}");
-            timer = new Timer(OnTicked, null, FirstCheckDelay, ButtonCheckInterval);
+            timer = new Timer(OnTicked, null, firstCheckDelay, buttonCheckInterval);
         }
 
         public void Stop()
@@ -32,14 +38,11 @@ namespace Cooldowns.Domain.Buttons
             timer = null;
         }
 
+        private void OnTicked(object? state) => Ticked?.Invoke(this, EventArgs.Empty);
+
         public void Dispose()
         {
             timer?.Dispose();
-        }
-
-        private void OnTicked(object? state)
-        {
-            Ticked?.Invoke(this, EventArgs.Empty);
         }
     }
 }

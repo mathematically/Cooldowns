@@ -1,8 +1,8 @@
-﻿using System;
-using System.Windows;
+﻿using System.Windows;
 using Cooldowns.Domain;
 using Cooldowns.Domain.Config;
 using Cooldowns.Domain.Keyboard;
+using Cooldowns.Factory;
 using Cooldowns.Windows;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,29 +14,34 @@ namespace Cooldowns
     {
         private readonly IHost host;
  
-        // This a bit OTT for a Windows app but wanted to do some latest .NET Core
-        
         public App()
         {
             host = Host.CreateDefaultBuilder()
-                       .ConfigureAppConfiguration((_, builder) => builder.AddJsonFile("appsettings.json", optional: false))
-                       .ConfigureServices((context, services) => ConfigureServices(context.Configuration, services))
-                       .Build();
+                .ConfigureAppConfiguration(ConfigureApp)
+                .ConfigureServices((context, services) => ConfigureServices(context.Configuration, services))
+                .Build();
         }
 
-        private void ConfigureServices(IConfiguration configuration, IServiceCollection services)
+        private static void ConfigureApp(HostBuilderContext _, IConfigurationBuilder builder)
+        {
+            builder.AddJsonFile("appsettings.json", false, false);
+        }
+
+        private static void ConfigureServices(IConfiguration configuration, IServiceCollection services)
         {
             services.Configure<Config>(configuration)
                     .AddSingleton<IKeyboardListener, Win32KeyboardListener>()
                     .AddSingleton<IKeyboard, KeyboardSimulator>()
                     .AddSingleton<IDispatcher, AppDispatcher>()
                     .AddSingleton<IScreen, Screen>()
+                    .AddSingleton<ICooldownButtonFactory, CooldownButtonFactory>()
+                    .AddSingleton<ISigilsOfHopeFactory, SigilsOfHopeFactory>()
                     .AddSingleton<Toolbar>();
         }
 
-        protected override async void OnStartup(StartupEventArgs e)
+        protected override void OnStartup(StartupEventArgs e)
         {
-            await host.StartAsync();
+            host.StartAsync();
  
             var toolbar = host.Services.GetRequiredService<Toolbar>();
             toolbar.Show();
@@ -48,7 +53,7 @@ namespace Cooldowns
         {
             using (host)
             {
-                await host.StopAsync(TimeSpan.FromSeconds(5));
+                await host.StopAsync();
             }
  
             base.OnExit(e);

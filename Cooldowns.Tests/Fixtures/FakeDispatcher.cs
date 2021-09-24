@@ -9,5 +9,10 @@ namespace Cooldowns.Tests.Fixtures
         {
             action();
         }
+
+        public void Invoke(Action action)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
