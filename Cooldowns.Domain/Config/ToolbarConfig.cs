@@ -2,8 +2,14 @@
 {
     public class ToolbarConfig
     {
-        public int FontSize { get; set; } = 18;
-        public double PosX { get; set; } = 0.5;
-        public double PosY { get; set; } = 0.28;
+        public double PosX { get; init; }
+        public double PosY { get; init; }
+        public bool QButton { get; init; }
+        public bool WButton { get; init; }
+        public bool EButton { get; init; }
+        public bool RButton { get; init; }
+        public bool SigilsOfHope { get; init; }
+        public int ButtonFontSize { get; init; }
+        public int IndicatorFontSize { get; init; }
     }
 }

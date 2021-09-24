@@ -8,6 +8,9 @@ using Cooldowns.Domain;
 using Cooldowns.Domain.Buttons;
 using Cooldowns.Domain.Config;
 using Cooldowns.Domain.Keyboard;
+using Cooldowns.Domain.Status;
+using Cooldowns.Domain.Timer;
+using Cooldowns.Factory;
 using Microsoft.Extensions.Options;
 using NLog;
 using NLog.Config;
@@ -33,65 +36,97 @@ namespace Cooldowns
             LogManager.Configuration = config;
         }
 
-        private void FreezeButtons()
+        private static readonly SolidColorBrush BlackBrush = new(Colors.Black);
+        private static readonly SolidColorBrush TransparentBrush = new(Colors.Transparent);
+        private static readonly SolidColorBrush GoldenrodBrush = new(Colors.DarkGoldenrod);
+
+        private static void FreezeButtons()
         {
-            goldenrodBrush.Freeze();
-            blackBrush.Freeze();
-            transparentBrush.Freeze();
+            BlackBrush.Freeze();
+            TransparentBrush.Freeze();
+            GoldenrodBrush.Freeze();
         }
 
-        private readonly SolidColorBrush blackBrush = new(Colors.Black);
-        private readonly SolidColorBrush goldenrodBrush = new(Colors.DarkGoldenrod);
-        private readonly SolidColorBrush transparentBrush = new(Colors.Transparent);
-
-        private readonly ICooldownTimer cooldownTimer;
-        private readonly IKeyboard keyboard;
+        private readonly ICooldownTimer gameCheckTimer;
         private readonly IKeyboardListener keyboardListener;
 
-        private readonly CooldownButton q, w, e, r;
         private readonly ToolbarViewModel viewModel = new();
 
-        private readonly double PosX;
-        private readonly double PosY;
+        // These are nullable as they might not be disabled completely in config.
+        private readonly CooldownButton? q, w, e, r;
+        private readonly StatusChecker<SigilsOfHope>? sigilsOfHope;
 
-        private AppState state = AppState.On;
+        private readonly double posX;
+        private readonly double posY;
 
-        public Toolbar(IOptions<Config> configuration, IDispatcher dispatcher, IScreen screen,
-            IKeyboardListener keyboardListener, IKeyboard keyboard)
+        public Toolbar(IOptions<Config> config, IKeyboardListener keyboardListener, ICooldownButtonFactory cooldownButtonFactory, ISigilsOfHopeFactory sigilsOfHopFactory)
         {
             this.keyboardListener = keyboardListener;
-            this.keyboard = keyboard;
 
             InitializeComponent();
             ConfigureLogging();
             FreezeButtons();
 
             DataContext = viewModel;
-            cooldownTimer = new CooldownTimer();
 
-            q = ButtonFactory(ButtonQ, configuration.Value.Toolbar, dispatcher, screen, cooldownTimer, configuration.Value.Q);
-            w = ButtonFactory(ButtonW, configuration.Value.Toolbar, dispatcher, screen, cooldownTimer, configuration.Value.W);
-            e = ButtonFactory(ButtonE, configuration.Value.Toolbar, dispatcher, screen, cooldownTimer, configuration.Value.E);
-            r = ButtonFactory(ButtonR, configuration.Value.Toolbar, dispatcher, screen, cooldownTimer, configuration.Value.R);
+            posX = config.Value.Toolbar.PosX;
+            posY = config.Value.Toolbar.PosY;
 
-            PosX = configuration.Value.Toolbar.PosX;
-            PosY = configuration.Value.Toolbar.PosY;
-        }
+            gameCheckTimer = new CooldownTimer(config.Value.PollIntervalMilliseconds);
 
-        // todo push some of this down into view model / models?
+            if (config.Value.Toolbar.QButton)
+            {
+                q = cooldownButtonFactory.Create(ButtonQ, config.Value.Q, gameCheckTimer, OnToolbarButtonStateChanged, OnToolbarButtonModeChanged);
+                ButtonQ.Content = config.Value.Q.Label;
+                ButtonQ.FontSize = config.Value.Toolbar.ButtonFontSize;
+            }
+            else
+            {
+                ButtonQ.Visibility = Visibility.Hidden;
+            }
 
-        private CooldownButton ButtonFactory(Button button, ToolbarConfig toolbar,
-            IDispatcher dispatcher, IScreen screen, ICooldownTimer cooldownTimer, KeyConfig key)
-        {
-            var cooldownButton = new CooldownButton(screen, keyboard, dispatcher, cooldownTimer, key);
-
-            cooldownButton.ButtonStateChanged += (_, buttonState) => OnToolbarButtonStateChanged(button, buttonState);
-            cooldownButton.ButtonModeChanged += (_, buttonMode) => OnToolbarButtonModeChanged(button, buttonMode);
-
-            button.Content = key.Label;
-            button.FontSize = toolbar.FontSize;
-
-            return cooldownButton;
+            if (config.Value.Toolbar.WButton)
+            {
+                w = cooldownButtonFactory.Create(ButtonW, config.Value.W, gameCheckTimer, OnToolbarButtonStateChanged, OnToolbarButtonModeChanged);
+                ButtonW.Content = config.Value.W.Label;
+                ButtonW.FontSize = config.Value.Toolbar.ButtonFontSize;
+            }
+            else
+            {
+                ButtonW.Visibility = Visibility.Hidden;
+            }
+            
+            if (config.Value.Toolbar.EButton)
+            {
+                e = cooldownButtonFactory.Create(ButtonE, config.Value.E, gameCheckTimer, OnToolbarButtonStateChanged, OnToolbarButtonModeChanged);
+                ButtonE.Content = config.Value.E.Label;
+                ButtonE.FontSize = config.Value.Toolbar.ButtonFontSize;
+            }
+            else
+            {
+                ButtonE.Visibility = Visibility.Hidden;
+            }
+            
+            if (config.Value.Toolbar.RButton)
+            {
+                r = cooldownButtonFactory.Create(ButtonR, config.Value.R, gameCheckTimer, OnToolbarButtonStateChanged, OnToolbarButtonModeChanged);
+                ButtonR.Content = config.Value.R.Label;
+                ButtonR.FontSize = config.Value.Toolbar.ButtonFontSize;
+            }
+            else
+            {
+                ButtonR.Visibility = Visibility.Hidden;
+            }
+            
+            if (config.Value.Toolbar.SigilsOfHope)
+            {
+                sigilsOfHope = sigilsOfHopFactory.Create(gameCheckTimer, OnSigilsOfHopeStatusChanged);
+                SigilsStatusIndicator.FontSize = config.Value.Toolbar.IndicatorFontSize;
+            }
+            else
+            {
+                SigilsStatusIndicator.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -106,8 +141,8 @@ namespace Cooldowns
 
         private void ResetWindowPosition()
         {
-            Left = SystemParameters.PrimaryScreenWidth * PosX - Width * 0.5;
-            Top = SystemParameters.FullPrimaryScreenHeight * PosY - Height * 0.5;
+            Left = SystemParameters.PrimaryScreenWidth * posX - Width * 0.5;
+            Top = SystemParameters.FullPrimaryScreenHeight * posY - Height * 0.5;
         }
 
         private void OnFocusChanged(object sender, AutomationFocusChangedEventArgs e)
@@ -117,18 +152,17 @@ namespace Cooldowns
 
             using Process process = Process.GetProcessById(focusedElement.Current.ProcessId);
             var processName = process.ProcessName;
-
             log.Debug($"Focus changed {processName}");
 
             Application.Current.Dispatcher.Invoke(() =>
             {
                 if (processName.Contains("Epoch") || processName.Contains("Cooldowns"))
                 {
-                    SetAppOn();
+                    SwitchAppOn();
                 }
                 else
                 {
-                    SetAppOff();
+                    SwitchAppOff();
                 }
             });
         }
@@ -168,19 +202,19 @@ namespace Cooldowns
                 case CooldownButtonMode.Disabled:
                     // Button state changes visibility only, mode switches colours to keep the events completely separate.
                     // Hence we don't use Visibility here but set everything transparent.
-                    button.BorderBrush = transparentBrush;
-                    button.Foreground = transparentBrush;
-                    button.Background = transparentBrush;
+                    button.BorderBrush = TransparentBrush;
+                    button.Foreground = TransparentBrush;
+                    button.Background = TransparentBrush;
                     break;
                 case CooldownButtonMode.Manual:
-                    button.BorderBrush = blackBrush;
-                    button.Foreground = blackBrush;
-                    button.Background = goldenrodBrush;
+                    button.BorderBrush = BlackBrush;
+                    button.Foreground = BlackBrush;
+                    button.Background = GoldenrodBrush;
                     break;
                 case CooldownButtonMode.AutoCast:
-                    button.BorderBrush = blackBrush;
-                    button.Foreground = goldenrodBrush;
-                    button.Background = transparentBrush;
+                    button.BorderBrush = BlackBrush;
+                    button.Foreground = GoldenrodBrush;
+                    button.Background = TransparentBrush;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(buttonMode), buttonMode, null);
@@ -197,6 +231,7 @@ namespace Cooldowns
             switch (args.KeyCode)
             {
                 case VirtualKeyCode.SCROLL:
+                    SwitchAppOff();
                     Application.Current.Shutdown();
                     return;
                 case VirtualKeyCode.PAUSE:
@@ -207,60 +242,68 @@ namespace Cooldowns
             }
         }
 
-        private static bool CheckModeKey(VirtualKeyCode pressedKeyCode, CooldownButton cooldownButton)
+        private static bool CheckModeKey(VirtualKeyCode pressedKeyCode, CooldownButton? cooldownButton)
         {
-            if (pressedKeyCode != cooldownButton.ModeKeyCode) return false;
+            if (cooldownButton == null || pressedKeyCode != cooldownButton.ModeKeyCode) return false;
             cooldownButton.ChangeMode();
             return true;
         }
 
+        private void OnSigilsOfHopeStatusChanged(SigilsOfHope state)
+        {
+            SigilsStatusIndicator.Content = state switch
+            {
+                SigilsOfHope.None => "-",
+                SigilsOfHope.One => "1",
+                SigilsOfHope.Two => "2",
+                SigilsOfHope.Three => "3",
+                SigilsOfHope.Four => "4",
+                _ => throw new ArgumentOutOfRangeException(nameof(state), state, null)
+            };
+        }
+
         private void ToggleEnabled()
         {
-            switch (state)
+            if (gameCheckTimer.IsRunning())
             {
-                case AppState.Off:
-                    log.Debug($"App manually switched OFF at {DateTime.UtcNow}");
-                    SetAppOn();
-                    break;
-                case AppState.On:
-                    log.Debug($"App manually switched ON at {DateTime.UtcNow}");
-                    SetAppOff();
-                    break;
+                log.Debug($"App manually switched OFF at {DateTime.UtcNow}");
+                SwitchAppOff();
+            }
+            else
+            {
+                log.Debug($"App manually switched ON at {DateTime.UtcNow}");
+                SwitchAppOn();
             }
         }
 
-        private void SetAppOn()
+        private void SwitchAppOn()
         {
-            state = AppState.On;
-            cooldownTimer.Start();
+            if (gameCheckTimer.IsRunning()) return;
+            gameCheckTimer.Start();
         }
 
-        private void SetAppOff()
+        private void SwitchAppOff()
         {
-            state = AppState.Off;
-            cooldownTimer.Stop();
+            if (!gameCheckTimer.IsRunning()) return;
+            gameCheckTimer.Stop();
         }
 
         private void OnClosed(object? sender, EventArgs args)
         {
-            q.Dispose();
-            w.Dispose();
-            e.Dispose();
-            r.Dispose();
+            gameCheckTimer.Stop();
+            gameCheckTimer.Dispose();
 
             Automation.RemoveAutomationFocusChangedEventHandler(OnFocusChanged);
 
             keyboardListener.UnHookKeyboard();
             keyboardListener.OnKeyPressed -= OnKeyPressed;
 
-            cooldownTimer.Stop();
-            cooldownTimer.Dispose();
-        }
+            q?.Dispose();
+            w?.Dispose();
+            e?.Dispose();
+            r?.Dispose();
 
-        private enum AppState
-        {
-            Off,
-            On
+            sigilsOfHope?.Dispose();
         }
     }
 }
