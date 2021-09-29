@@ -3,6 +3,7 @@ using Cooldowns.Domain;
 using Cooldowns.Domain.Buttons;
 using Cooldowns.Domain.Config;
 using Cooldowns.Domain.Keyboard;
+using Cooldowns.Domain.Timer;
 using NSubstitute;
 using Xunit;
 

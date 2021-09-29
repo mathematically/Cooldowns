@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cooldowns.Domain.Config;
 using Cooldowns.Domain.Keyboard;
+using Cooldowns.Domain.Timer;
 using NLog;
 using WindowsInput.Native;
 using Color = Cooldowns.Domain.Screen.Color;

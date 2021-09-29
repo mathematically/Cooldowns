@@ -1,8 +1,8 @@
 using System;
-using System.Threading;
+using Cooldowns.Domain.Buttons;
 using NLog;
 
-namespace Cooldowns.Domain.Buttons
+namespace Cooldowns.Domain.Timer
 {
     public sealed class CooldownTimer : ICooldownTimer
     {
@@ -10,7 +10,7 @@ namespace Cooldowns.Domain.Buttons
         private readonly int buttonCheckInterval;
         private readonly Logger log = LogManager.GetCurrentClassLogger();
 
-        private Timer? timer;
+        private System.Threading.Timer? timer;
 
         public event EventHandler? Ticked;
 
@@ -28,7 +28,7 @@ namespace Cooldowns.Domain.Buttons
             }
 
             log.Debug($"Timer started at {DateTime.UtcNow}");
-            timer = new Timer(OnTicked, null, firstCheckDelay, buttonCheckInterval);
+            timer = new System.Threading.Timer(OnTicked, null, firstCheckDelay, buttonCheckInterval);
         }
 
         public void Stop()
@@ -36,6 +36,11 @@ namespace Cooldowns.Domain.Buttons
             log.Debug($"Timer stopped at {DateTime.UtcNow}");
             timer?.Dispose();
             timer = null;
+        }
+
+        public bool IsRunning()
+        {
+            return timer != null;
         }
 
         private void OnTicked(object? state) => Ticked?.Invoke(this, EventArgs.Empty);

@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using Cooldowns.Domain.Buttons;
 using Cooldowns.Domain.Screen;
+using Cooldowns.Domain.Timer;
 using NLog;
 
 namespace Cooldowns.Domain.Status
@@ -13,20 +12,18 @@ namespace Cooldowns.Domain.Status
         private readonly IScreen screen;
         private readonly IDispatcher dispatcher;
         private readonly ICooldownTimer cooldownTimer;
+        private readonly StatusCheckInfo<T> statusCheckInfo;
 
-        private List<Fingerprint<T>> Fingerprints { get; init; }
-
-        private T? state;
+        private T state;
         public event EventHandler<T>? StatusChanged;
 
-        public StatusChecker(IScreen screen, IDispatcher dispatcher, ICooldownTimer cooldownTimer,
-            List<Fingerprint<T>> fingerprints)
+        public StatusChecker(IScreen screen, IDispatcher dispatcher, ICooldownTimer cooldownTimer, StatusCheckInfo<T> statusCheckInfo)
         {
             this.screen = screen;
             this.dispatcher = dispatcher;
             this.cooldownTimer = cooldownTimer;
-
-            Fingerprints = fingerprints;
+            this.statusCheckInfo = statusCheckInfo;
+            this.state = statusCheckInfo.MissingValue;
 
             cooldownTimer.Ticked += CooldownTimerOnTicked;
         }
@@ -36,62 +33,62 @@ namespace Cooldowns.Domain.Status
             CheckState();
         }
 
-        public void CheckState()
+        private const int MissLimit = 5;
+        private int missCount;
+
+        private void CheckState()
         {
-            int fn = 0;
-            foreach (var fingerprint in Fingerprints)
+            log.Debug($"Checking StatusCheck {statusCheckInfo.Name} current={state}.");
+
+            foreach (var fingerprint in statusCheckInfo.Fingerprints)
             {
-                log.Debug($"Checking Fingerprint {fingerprint.Name} current={state}.");
+                bool match = true;
+                log.Debug($"{statusCheckInfo.Name} test for {fingerprint.State}");
 
-                fn++;
-                int tn = 0;
-                foreach (var test in fingerprint.Tests)
+                for (int i = 0; i < fingerprint.Points.Count; i++)
                 {
-                    bool match = true;
-                    log.Debug($"{fingerprint.Name} test #{tn++} for {test.State}");
+                    var p = fingerprint.Points[i];
+                    var c = fingerprint.Colors[i];
 
-                    for (int i = 0; i < test.Points.Count; i++)
+                    var px = screen.GetPixelColor(p.X, p.Y);
+
+                    if (Color.IsExactMatch(px, c))
                     {
-                        var p = test.Points[i];
-                        var c = test.Colors[i];
-
-                        var px = screen.GetPixelColor(p.X, p.Y);
-
-                        if (!Color.IsExactMatch(px, c))
-                        {
-                            log.Debug($"{fn}.{tn}.{i}.{test.State} test FAILED at {p} with {px} looking for {c}.");
-                            match = false;
-                            break;
-                        }
-                        else
-                        {
-                            log.Debug($"{fn}.{tn}.{i}.{test.State} test PASSED at {p} with {px}.");
-                        }
-                    }
-
-                    if (match)
-                    {
-                        log.Debug($"{fn}.{tn}.{test.State} MATCHED.");
-                        OnStatusChanged(test.State);
-                        return;
+                        log.Debug($"P{i}.{fingerprint.State} test PASSED at {p} with {px}.");
                     }
                     else
                     {
-                        log.Debug($"{fn}.{tn}.{test.State} DID NOT MATCH.");
+                        log.Debug($"P{i}.{fingerprint.State} test FAILED at {p} with {px} looking for {c}.");
+                        match = false;
+                        break;
                     }
                 }
 
-                // log.Debug($"Using MISSING Value {fingerprint.MissingValue}");
-                // OnStatusChanged(fingerprint.MissingValue);
-                return;
+                if (match)
+                {
+                    log.Debug($"{statusCheckInfo.Name} MATCHED was {state} now {fingerprint.State}.");
+                    state = fingerprint.State;
+                    missCount = 0;
+                    OnStatusChanged(fingerprint.State);
+                    return;
+                }
+
+                log.Debug($"{statusCheckInfo.Name}.{fingerprint.State} DID NOT MATCH still {state}");
+                missCount++;
+            }
+
+            if (missCount > MissLimit)
+            {
+                log.Debug($"Got {missCount} misses forcing {state} to MISSING Value {statusCheckInfo.MissingValue}");
+                OnStatusChanged(statusCheckInfo.MissingValue);
+                state = statusCheckInfo.MissingValue;
+                missCount = 0;
             }
         }
 
         private void OnStatusChanged(T state)
         {
-            if (state.Equals(this.state)) return;
-            this.state = state;
-            dispatcher.Invoke(() => StatusChanged?.Invoke(this, this.state));
+            dispatcher.Invoke(() => StatusChanged?.Invoke(this, state));
         }
 
         public void Dispose()

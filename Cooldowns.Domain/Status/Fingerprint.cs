@@ -1,11 +1,17 @@
 ﻿using System.Collections.Generic;
+using System.Drawing;
 
 namespace Cooldowns.Domain.Status
 {
-    public class Fingerprint<T> where T : notnull
+    public record Fingerprint<T>
     {
-        public string Name { get; init; } = default!;
-        public List<Testpoint<T>> Tests { get; init; } = new();
-        public T MissingValue { get; init; } = default!;
+        public List<Point> Points { get; init; } = new();
+        public List<Color> Colors  { get; init; } = new();
+        public T State { get; init; }
+
+        public Fingerprint(T state)
+        {
+            State = state;
+        }
     }
 }

@@ -9,6 +9,7 @@ using Cooldowns.Domain.Buttons;
 using Cooldowns.Domain.Config;
 using Cooldowns.Domain.Keyboard;
 using Cooldowns.Domain.Status;
+using Cooldowns.Domain.Timer;
 using Cooldowns.Factory;
 using Microsoft.Extensions.Options;
 using NLog;
@@ -35,35 +36,28 @@ namespace Cooldowns
             LogManager.Configuration = config;
         }
 
-        private enum AppState
-        {
-            Off,
-            On
-        }
-        private void FreezeButtons()
-        {
-            goldenrodBrush.Freeze();
-            blackBrush.Freeze();
-            transparentBrush.Freeze();
-        }
+        private static readonly SolidColorBrush BlackBrush = new(Colors.Black);
+        private static readonly SolidColorBrush TransparentBrush = new(Colors.Transparent);
+        private static readonly SolidColorBrush GoldenrodBrush = new(Colors.DarkGoldenrod);
 
-        private readonly SolidColorBrush blackBrush = new(Colors.Black);
-        private readonly SolidColorBrush goldenrodBrush = new(Colors.DarkGoldenrod);
-        private readonly SolidColorBrush transparentBrush = new(Colors.Transparent);
+        private static void FreezeButtons()
+        {
+            BlackBrush.Freeze();
+            TransparentBrush.Freeze();
+            GoldenrodBrush.Freeze();
+        }
 
         private readonly ICooldownTimer gameCheckTimer;
         private readonly IKeyboardListener keyboardListener;
 
         private readonly ToolbarViewModel viewModel = new();
 
-        // These are nullable as they might not be configured.
+        // These are nullable as they might not be disabled completely in config.
         private readonly CooldownButton? q, w, e, r;
         private readonly StatusChecker<SigilsOfHope>? sigilsOfHope;
 
         private readonly double posX;
         private readonly double posY;
-
-        private AppState state = AppState.On;
 
         public Toolbar(IOptions<Config> config, IKeyboardListener keyboardListener, ICooldownButtonFactory cooldownButtonFactory, ISigilsOfHopeFactory sigilsOfHopFactory)
         {
@@ -77,9 +71,8 @@ namespace Cooldowns
 
             posX = config.Value.Toolbar.PosX;
             posY = config.Value.Toolbar.PosY;
-            SigilsStatusIndicator.FontSize = config.Value.Toolbar.IndicatorFontSize;
 
-            gameCheckTimer = new CooldownTimer(10);
+            gameCheckTimer = new CooldownTimer(config.Value.PollIntervalMilliseconds);
 
             if (config.Value.Toolbar.QButton)
             {
@@ -132,7 +125,7 @@ namespace Cooldowns
             }
             else
             {
-                SigilsStatusIndicator.Visibility = Visibility.Hidden;
+                SigilsStatusIndicator.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -165,11 +158,11 @@ namespace Cooldowns
             {
                 if (processName.Contains("Epoch") || processName.Contains("Cooldowns"))
                 {
-                    SetAppOn();
+                    SwitchAppOn();
                 }
                 else
                 {
-                    SetAppOff();
+                    SwitchAppOff();
                 }
             });
         }
@@ -209,19 +202,19 @@ namespace Cooldowns
                 case CooldownButtonMode.Disabled:
                     // Button state changes visibility only, mode switches colours to keep the events completely separate.
                     // Hence we don't use Visibility here but set everything transparent.
-                    button.BorderBrush = transparentBrush;
-                    button.Foreground = transparentBrush;
-                    button.Background = transparentBrush;
+                    button.BorderBrush = TransparentBrush;
+                    button.Foreground = TransparentBrush;
+                    button.Background = TransparentBrush;
                     break;
                 case CooldownButtonMode.Manual:
-                    button.BorderBrush = blackBrush;
-                    button.Foreground = blackBrush;
-                    button.Background = goldenrodBrush;
+                    button.BorderBrush = BlackBrush;
+                    button.Foreground = BlackBrush;
+                    button.Background = GoldenrodBrush;
                     break;
                 case CooldownButtonMode.AutoCast:
-                    button.BorderBrush = blackBrush;
-                    button.Foreground = goldenrodBrush;
-                    button.Background = transparentBrush;
+                    button.BorderBrush = BlackBrush;
+                    button.Foreground = GoldenrodBrush;
+                    button.Background = TransparentBrush;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(buttonMode), buttonMode, null);
@@ -259,7 +252,7 @@ namespace Cooldowns
         {
             SigilsStatusIndicator.Content = state switch
             {
-                SigilsOfHope.None => "",
+                SigilsOfHope.None => "-",
                 SigilsOfHope.One => "1",
                 SigilsOfHope.Two => "2",
                 SigilsOfHope.Three => "3",
@@ -270,33 +263,35 @@ namespace Cooldowns
 
         private void ToggleEnabled()
         {
-            switch (state)
+            if (gameCheckTimer.IsRunning())
             {
-                case AppState.Off:
-                    log.Debug($"App manually switched OFF at {DateTime.UtcNow}");
-                    SetAppOn();
-                    break;
-                case AppState.On:
-                    log.Debug($"App manually switched ON at {DateTime.UtcNow}");
-                    SetAppOff();
-                    break;
+                log.Debug($"App manually switched OFF at {DateTime.UtcNow}");
+                SwitchAppOff();
+            }
+            else
+            {
+                log.Debug($"App manually switched ON at {DateTime.UtcNow}");
+                SwitchAppOn();
             }
         }
 
-        private void SetAppOn()
+        private void SwitchAppOn()
         {
-            state = AppState.On;
+            if (gameCheckTimer.IsRunning()) return;
             gameCheckTimer.Start();
         }
 
-        private void SetAppOff()
+        private void SwitchAppOff()
         {
-            state = AppState.Off;
+            if (!gameCheckTimer.IsRunning()) return;
             gameCheckTimer.Stop();
         }
 
         private void OnClosed(object? sender, EventArgs args)
         {
+            gameCheckTimer.Stop();
+            gameCheckTimer.Dispose();
+
             q?.Dispose();
             w?.Dispose();
             e?.Dispose();
@@ -308,9 +303,6 @@ namespace Cooldowns
 
             keyboardListener.UnHookKeyboard();
             keyboardListener.OnKeyPressed -= OnKeyPressed;
-
-            gameCheckTimer.Stop();
-            gameCheckTimer.Dispose();
         }
     }
 }

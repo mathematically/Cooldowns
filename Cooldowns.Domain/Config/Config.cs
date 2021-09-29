@@ -1,4 +1,6 @@
-﻿namespace Cooldowns.Domain.Config
+﻿using NLog;
+
+namespace Cooldowns.Domain.Config
 {
     public class Config
     {
@@ -7,5 +9,6 @@
         public KeyConfig W { get; init; } = null!;
         public KeyConfig E { get; init; } = null!;
         public KeyConfig R { get; init; } = null!;
+        public int PollIntervalMilliseconds { get; init; }
     }
 }

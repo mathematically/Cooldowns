@@ -2,6 +2,7 @@
 using System.Windows.Controls;
 using Cooldowns.Domain.Buttons;
 using Cooldowns.Domain.Config;
+using Cooldowns.Domain.Timer;
 
 namespace Cooldowns.Factory
 {

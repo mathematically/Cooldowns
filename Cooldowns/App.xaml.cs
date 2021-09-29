@@ -42,9 +42,7 @@ namespace Cooldowns
         protected override void OnStartup(StartupEventArgs e)
         {
             host.StartAsync();
- 
-            var toolbar = host.Services.GetRequiredService<Toolbar>();
-            toolbar.Show();
+            host.Services.GetRequiredService<Toolbar>().Show();
  
             base.OnStartup(e);
         }
