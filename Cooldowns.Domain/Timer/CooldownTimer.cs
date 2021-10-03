@@ -1,23 +1,22 @@
 using System;
-using Cooldowns.Domain.Buttons;
 using NLog;
 
 namespace Cooldowns.Domain.Timer
 {
     public sealed class CooldownTimer : ICooldownTimer
     {
-        private readonly int firstCheckDelay;
-        private readonly int buttonCheckInterval;
+        private readonly int delay;
+        private readonly int checkInterval;
         private readonly Logger log = LogManager.GetCurrentClassLogger();
 
         private System.Threading.Timer? timer;
 
         public event EventHandler? Ticked;
 
-        public CooldownTimer(int buttonCheckInterval, int firstCheckDelay = 1000)
+        public CooldownTimer(int checkInterval, int delay = 1000)
         {
-            this.buttonCheckInterval = buttonCheckInterval;
-            this.firstCheckDelay = firstCheckDelay;
+            this.checkInterval = checkInterval;
+            this.delay = delay;
         }
 
         public void Start()
@@ -28,7 +27,7 @@ namespace Cooldowns.Domain.Timer
             }
 
             log.Debug($"Timer started at {DateTime.UtcNow}");
-            timer = new System.Threading.Timer(OnTicked, null, firstCheckDelay, buttonCheckInterval);
+            timer = new System.Threading.Timer(OnTicked, null, delay, checkInterval);
         }
 
         public void Stop()

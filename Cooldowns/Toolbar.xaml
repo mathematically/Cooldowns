@@ -21,7 +21,8 @@
     <Window.Resources>
         <Style TargetType="{x:Type Button}">
             <Setter Property="Margin" Value="0" />
-            <Setter Property="Padding" Value="2" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="Visibility" Value="Hidden" />
             <Setter Property="BorderBrush" Value="Black" />
             <Setter Property="Foreground" Value="Black" />
             <Setter Property="Background" Value="DarkGoldenrod" />
@@ -44,16 +45,6 @@
                     </BeginStoryboard>
                 </EventTrigger>
             </Style.Triggers>
-        </Style>
-        <Style x:Key="StatusIndicatorStyle" TargetType="{x:Type TextBlock}">
-            <Setter Property="Margin" Value="2" />
-            <Setter Property="Padding" Value="4" />
-            <Setter Property="Background" Value="DarkGoldenrod" />
-            <Setter Property="Foreground" Value="Black" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Opacity" Value="1.0" />
-            <Setter Property="FontWeight" Value="ExtraBlack" />
         </Style>
     </Window.Resources>
     <Window.DataContext>

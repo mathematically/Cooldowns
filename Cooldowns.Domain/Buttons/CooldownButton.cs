@@ -47,8 +47,8 @@ namespace Cooldowns.Domain.Buttons
             return Color.IsMatch(p, SkillCooldownColor);
         }
 
-        public event EventHandler<CooldownButtonState>? ButtonStateChanged;
-        public event EventHandler<CooldownButtonMode>? ButtonModeChanged;
+        public event EventHandler<ButtonStateEventArgs>? ButtonStateChanged;
+        public event EventHandler<ButtonModeEventArgs>? ButtonModeChanged;
 
         private VirtualKeyCode ActionKeyCode { get; }
         public VirtualKeyCode ModeKeyCode { get; }
@@ -74,16 +74,17 @@ namespace Cooldowns.Domain.Buttons
         private void OnButtonStateChanged(CooldownButtonState state)
         {
             if (buttonState == state) return;
-            log.Debug($"{config.ActionKey} {state}");
+            log.Debug($"{config.ActionKey} {state} was {buttonState}");
             buttonState = state;
-            dispatcher.BeginInvoke(() => ButtonStateChanged?.Invoke(this, buttonState));
+            dispatcher.BeginInvoke(() => ButtonStateChanged?.Invoke(this, new ButtonStateEventArgs(config.Label, buttonState)));
         }
 
         private void OnButtonModeChanged(CooldownButtonMode mode)
         {
             if (buttonMode == mode) return;
+            log.Debug($"{config.ActionKey} {mode} was {buttonMode}");
             buttonMode = mode;
-            dispatcher.BeginInvoke(() => ButtonModeChanged?.Invoke(this, mode));
+            dispatcher.BeginInvoke(() => ButtonModeChanged?.Invoke(this, new ButtonModeEventArgs(config.Label, buttonMode)));
         }
 
         public void ChangeMode()

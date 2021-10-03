@@ -7,10 +7,10 @@ using System.Windows.Media;
 using Cooldowns.Domain;
 using Cooldowns.Domain.Buttons;
 using Cooldowns.Domain.Config;
+using Cooldowns.Domain.Factory;
 using Cooldowns.Domain.Keyboard;
 using Cooldowns.Domain.Status;
 using Cooldowns.Domain.Timer;
-using Cooldowns.Factory;
 using Microsoft.Extensions.Options;
 using NLog;
 using NLog.Config;
@@ -56,10 +56,11 @@ namespace Cooldowns
         private readonly CooldownButton? q, w, e, r;
         private readonly StatusChecker<SigilsOfHope>? sigilsOfHope;
 
+        private readonly int buttonFontSize;
         private readonly double posX;
         private readonly double posY;
 
-        public Toolbar(IOptions<Config> config, IKeyboardListener keyboardListener, ICooldownButtonFactory cooldownButtonFactory, ISigilsOfHopeFactory sigilsOfHopFactory)
+        public Toolbar(IOptions<Config> config, IKeyboardListener keyboardListener, ICooldownButtonFactory cooldownButtonFactory, ISigilsOfHopeFactory sigilsOfHopeFactory)
         {
             this.keyboardListener = keyboardListener;
 
@@ -69,64 +70,36 @@ namespace Cooldowns
 
             DataContext = viewModel;
 
+            buttonFontSize = config.Value.Toolbar.ButtonFontSize;
             posX = config.Value.Toolbar.PosX;
             posY = config.Value.Toolbar.PosY;
 
             gameCheckTimer = new CooldownTimer(config.Value.PollIntervalMilliseconds);
 
-            if (config.Value.Toolbar.QButton)
-            {
-                q = cooldownButtonFactory.Create(ButtonQ, config.Value.Q, gameCheckTimer, OnToolbarButtonStateChanged, OnToolbarButtonModeChanged);
-                ButtonQ.Content = config.Value.Q.Label;
-                ButtonQ.FontSize = config.Value.Toolbar.ButtonFontSize;
-            }
-            else
-            {
-                ButtonQ.Visibility = Visibility.Hidden;
-            }
+            q = config.Value.Toolbar.QButton ? Create(ButtonQ, config.Value.Q, cooldownButtonFactory) : null;
+            w = config.Value.Toolbar.WButton ? Create(ButtonW, config.Value.W, cooldownButtonFactory) : null;
+            e = config.Value.Toolbar.EButton ? Create(ButtonE, config.Value.E, cooldownButtonFactory) : null;
+            r = config.Value.Toolbar.RButton ? Create(ButtonR, config.Value.R, cooldownButtonFactory) : null;
 
-            if (config.Value.Toolbar.WButton)
-            {
-                w = cooldownButtonFactory.Create(ButtonW, config.Value.W, gameCheckTimer, OnToolbarButtonStateChanged, OnToolbarButtonModeChanged);
-                ButtonW.Content = config.Value.W.Label;
-                ButtonW.FontSize = config.Value.Toolbar.ButtonFontSize;
-            }
-            else
-            {
-                ButtonW.Visibility = Visibility.Hidden;
-            }
-            
-            if (config.Value.Toolbar.EButton)
-            {
-                e = cooldownButtonFactory.Create(ButtonE, config.Value.E, gameCheckTimer, OnToolbarButtonStateChanged, OnToolbarButtonModeChanged);
-                ButtonE.Content = config.Value.E.Label;
-                ButtonE.FontSize = config.Value.Toolbar.ButtonFontSize;
-            }
-            else
-            {
-                ButtonE.Visibility = Visibility.Hidden;
-            }
-            
-            if (config.Value.Toolbar.RButton)
-            {
-                r = cooldownButtonFactory.Create(ButtonR, config.Value.R, gameCheckTimer, OnToolbarButtonStateChanged, OnToolbarButtonModeChanged);
-                ButtonR.Content = config.Value.R.Label;
-                ButtonR.FontSize = config.Value.Toolbar.ButtonFontSize;
-            }
-            else
-            {
-                ButtonR.Visibility = Visibility.Hidden;
-            }
-            
             if (config.Value.Toolbar.SigilsOfHope)
             {
-                sigilsOfHope = sigilsOfHopFactory.Create(gameCheckTimer, OnSigilsOfHopeStatusChanged);
+                sigilsOfHope = sigilsOfHopeFactory.Create(gameCheckTimer, OnSigilsOfHopeStatusChanged);
                 SigilsStatusIndicator.FontSize = config.Value.Toolbar.IndicatorFontSize;
+                SigilsStatusIndicator.Visibility = Visibility.Visible;
             }
             else
             {
                 SigilsStatusIndicator.Visibility = Visibility.Collapsed;
             }
+        }
+
+        private CooldownButton? Create(Button button, KeyConfig keyConfig, ICooldownButtonFactory cooldownButtonFactory)
+        {
+            button.Content = keyConfig.Label;
+            button.FontSize = buttonFontSize;
+            button.Visibility = Visibility.Visible;
+
+            return cooldownButtonFactory.Create(keyConfig, gameCheckTimer, OnToolbarButtonStateChanged, OnToolbarButtonModeChanged);
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -167,9 +140,11 @@ namespace Cooldowns
             });
         }
 
-        private void OnToolbarButtonStateChanged(Button button, CooldownButtonState buttonState)
+        private void OnToolbarButtonStateChanged(ButtonStateEventArgs args)
         {
-            switch (buttonState)
+            Button button = GetButton(args.Name);
+
+            switch (args.State)
             {
                 case CooldownButtonState.Cooldown:
                     log.Debug($"Toolbar Button {button.Content} is on COOLDOWN.");
@@ -186,18 +161,29 @@ namespace Cooldowns
                     button.Opacity = 1.0;
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(buttonState), buttonState, null);
+                    throw new ArgumentOutOfRangeException(args.Name, args.State, null);
             }
         }
 
-        private void OnToolbarButtonModeChanged(Button button, CooldownButtonMode buttonMode)
+        private Button GetButton(string buttonName)
         {
-            string message = $"Button {button.Content} mode is now {buttonMode.ToString().ToUpper()}";
+            if (Equals(buttonName, ButtonQ.Content)) return ButtonQ;
+            if (Equals(buttonName, ButtonW.Content)) return ButtonW;
+            if (Equals(buttonName, ButtonE.Content)) return ButtonE;
+            if (Equals(buttonName, ButtonR.Content)) return ButtonR;
 
+            throw new ArgumentOutOfRangeException($"Could not find button with name {buttonName}");
+        }
+
+        private void OnToolbarButtonModeChanged(ButtonModeEventArgs args)
+        {
+            Button button = GetButton(args.Name);
+
+            string message = $"Button {args.Name} mode is now {args.Mode.ToString().ToUpper()}";
             viewModel.StatusText = message;
             log.Debug(message);
 
-            switch (buttonMode)
+            switch (args.Mode)
             {
                 case CooldownButtonMode.Disabled:
                     // Button state changes visibility only, mode switches colours to keep the events completely separate.
@@ -217,7 +203,7 @@ namespace Cooldowns
                     button.Background = TransparentBrush;
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(buttonMode), buttonMode, null);
+                    throw new ArgumentOutOfRangeException(args.Name, args.Mode, null);
             }
         }
 

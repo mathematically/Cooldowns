@@ -6,15 +6,15 @@ namespace Cooldowns.Domain.Status
     {
         public string Name { get; }
         public T MissingValue { get; }
-        public Fingerprint<T> HasState { get; }
-        public List<Fingerprint<T>> StateValues { get; }
+        public Fingerprint<T> StatusFingerprint { get; }
+        public List<Fingerprint<T>> StatusValueFingerprints { get; }
 
-        public StatusCheckInfo(T missingValue, Fingerprint<T> hasState, List<Fingerprint<T>> stateValues)
+        public StatusCheckInfo(T missingValue, Fingerprint<T> statusFingerprint, List<Fingerprint<T>> statusValueFingerprints)
         {
             Name = typeof(T).FullName ?? string.Empty;
             MissingValue = missingValue;
-            HasState = hasState;
-            StateValues = stateValues;
+            StatusFingerprint = statusFingerprint;
+            StatusValueFingerprints = statusValueFingerprints;
         }
     }
 }

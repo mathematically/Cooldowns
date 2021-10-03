@@ -1,9 +1,8 @@
 ﻿using System;
-using Cooldowns.Domain.Buttons;
 using Cooldowns.Domain.Status;
 using Cooldowns.Domain.Timer;
 
-namespace Cooldowns.Factory
+namespace Cooldowns.Domain.Factory
 {
     public interface ISigilsOfHopeFactory
     {

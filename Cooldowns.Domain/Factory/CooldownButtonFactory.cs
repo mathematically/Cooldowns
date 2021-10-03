@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Windows.Controls;
-using Cooldowns.Domain;
 using Cooldowns.Domain.Buttons;
 using Cooldowns.Domain.Config;
 using Cooldowns.Domain.Keyboard;
 using Cooldowns.Domain.Timer;
 
-namespace Cooldowns.Factory
+namespace Cooldowns.Domain.Factory
 {
     public class CooldownButtonFactory: ICooldownButtonFactory
     {
@@ -21,13 +19,13 @@ namespace Cooldowns.Factory
             this.keyboard = keyboard;
         }
 
-        public CooldownButton Create(Button button, KeyConfig config, ICooldownTimer cooldownTimer, 
-            Action<Button, CooldownButtonState> onToolbarButtonStateChanged, Action<Button, CooldownButtonMode> onToolbarButtonModeChanged)
+        public CooldownButton? Create(KeyConfig config, ICooldownTimer cooldownTimer, Action<ButtonStateEventArgs> onToolbarButtonStateChanged, 
+            Action<ButtonModeEventArgs> onToolbarButtonModeChanged)
         {
             var cooldownButton = new CooldownButton(screen, keyboard, dispatcher, cooldownTimer, config);
 
-            cooldownButton.ButtonStateChanged += (_, buttonState) => onToolbarButtonStateChanged(button, buttonState);
-            cooldownButton.ButtonModeChanged += (_, buttonMode) => onToolbarButtonModeChanged(button, buttonMode);
+            cooldownButton.ButtonStateChanged += (_, args) => onToolbarButtonStateChanged(args);
+            cooldownButton.ButtonModeChanged += (_, args) => onToolbarButtonModeChanged(args);
 
             return cooldownButton;
         }

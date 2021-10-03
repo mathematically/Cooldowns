@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using Cooldowns.Domain;
 using Cooldowns.Domain.Status;
 using Cooldowns.Domain.Timer;
 
-namespace Cooldowns.Factory
+namespace Cooldowns.Domain.Factory
 {
     public class SigilsOfHopeFactory: ISigilsOfHopeFactory
     {
@@ -20,7 +19,7 @@ namespace Cooldowns.Factory
 
         public StatusChecker<SigilsOfHope> Create(ICooldownTimer timer, Action<SigilsOfHope> onChanged)
         {
-            Fingerprint<SigilsOfHope> hasAny = new(SigilsOfHope.None)
+            Fingerprint<SigilsOfHope> stateCheck = new(SigilsOfHope.None)
             {
                 Points = new List<Point>
                 {
@@ -36,7 +35,7 @@ namespace Cooldowns.Factory
                 },
             };
 
-            var fingerprints = new List<Fingerprint<SigilsOfHope>>
+            var stateValueChecks = new List<Fingerprint<SigilsOfHope>>
             {
                 new(SigilsOfHope.One)
                 {
@@ -86,9 +85,9 @@ namespace Cooldowns.Factory
                 },
             };
 
-            StatusCheckInfo<SigilsOfHope> statusCheckInfo = new(SigilsOfHope.None, hasAny, fingerprints);
+            var statusCheckInfo = new StatusCheckInfo<SigilsOfHope>(SigilsOfHope.None, stateCheck, stateValueChecks);
+            var checker = new StatusChecker<SigilsOfHope>(screen, dispatcher, timer, statusCheckInfo);
 
-            StatusChecker<SigilsOfHope> checker = new(screen, dispatcher, timer, statusCheckInfo);
             checker.StatusChanged += (_, sigilState) => onChanged(sigilState);
 
             return checker;

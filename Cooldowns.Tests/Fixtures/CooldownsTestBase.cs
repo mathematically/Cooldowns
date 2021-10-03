@@ -34,14 +34,16 @@ namespace Cooldowns.Tests.Fixtures
             };
         }
 
-        protected void AssertButtonCooldownState(object? _, CooldownButtonState actualState)
+        protected void AssertButtonCooldownState(object? _, ButtonStateEventArgs args)
         {
-            Assert.Equal(ExpectedState, actualState);
+            Assert.Equal(KeyConfig.Label, args.Name);
+            Assert.Equal(ExpectedState, args.State);
         }
 
-        protected void AssertButtonCooldownMode(object? _, CooldownButtonMode actualMode)
+        protected void AssertButtonCooldownMode(object? _, ButtonModeEventArgs args)
         {
-            Assert.Equal(ExpectedMode, actualMode);
+            Assert.Equal(KeyConfig.Label, args.Name);
+            Assert.Equal(ExpectedMode, args.Mode);
         }
 
         private void SetScreenPixel(Color color, int x, int y)

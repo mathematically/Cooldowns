@@ -58,4 +58,8 @@
       <ProjectReference Include="..\Cooldowns.Domain\Cooldowns.Domain.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Factory\" />
+    </ItemGroup>
+
 </Project>

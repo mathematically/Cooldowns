@@ -16,6 +16,7 @@ namespace Cooldowns.Domain.Status
         private readonly StatusCheckInfo<T> statusCheckInfo;
 
         private T state;
+
         public event EventHandler<T>? StatusChanged;
 
         public StatusChecker(IScreen screen, IDispatcher dispatcher, ICooldownTimer cooldownTimer, StatusCheckInfo<T> statusCheckInfo)
@@ -31,49 +32,50 @@ namespace Cooldowns.Domain.Status
 
         private void CooldownTimerOnTicked(object? sender, EventArgs e)
         {
-            if (HasState())
+            if (HasStatus())
             {
-                IdentifyExactState();
-            }
-        }
+                log.Debug($"{statusCheckInfo.Name} status FOUND checking for current value.");
+                var exactState = IdentifyExactState();
 
-        private bool HasState()
-        {
-            var hasState = statusCheckInfo.HasState;
-
-            for (int i = 0; i < hasState.Points.Count; i++)
-            {
-                var p = hasState.Points[i];
-                var c = hasState.Colors[i];
-
-                var px = screen.GetPixelColor(p.X, p.Y);
-
-                if (!Color.IsExactMatch(px, c))
+                if (exactState.Equals(statusCheckInfo.MissingValue))
                 {
-                    log.Debug($"{statusCheckInfo.Name} status fingerprint NOT FOUND, state set to {statusCheckInfo.MissingValue}");
-                    OnStatusChanged(statusCheckInfo.MissingValue);
-                    return false;
-                }
-            }
+                    // We are either misconfigured or are in some indeterminate state so don't raise event
+                    log.Debug($"Couldn't find status for {statusCheckInfo.Name} status remains unchanged at {state}");
+                    return;
 
-            log.Debug($"{statusCheckInfo.Name} status fingerprint FOUND will check for value");
-            return true;
+                }
+
+                log.Debug($"{statusCheckInfo.Name} has status {exactState}.");
+                state = exactState;
+                OnStatusChanged(state);
+            }
+            else
+            {
+                log.Debug($"{statusCheckInfo.Name} status fingerprint NOT FOUND, state set to {statusCheckInfo.MissingValue}");
+                state = statusCheckInfo.MissingValue;
+                OnStatusChanged(statusCheckInfo.MissingValue);
+            }
         }
 
-        private void IdentifyExactState()
+        private bool HasStatus()
+        {
+            return CheckScreenForStatus(statusCheckInfo.StatusFingerprint);
+        }
+
+        private T IdentifyExactState()
         {
             log.Debug($"Checking StatusCheck {statusCheckInfo.Name} current={state}.");
 
-            foreach (var v in statusCheckInfo.StateValues.Where(HasStateValue))
+            foreach (var fingerprint in statusCheckInfo.StatusValueFingerprints.Where(CheckScreenForStatus))
             {
-                log.Debug($"{statusCheckInfo.Name} MATCHED was {state} now {v.State}.");
-                state = v.State;
-                OnStatusChanged(v.State);
-                return;
+                log.Debug($"{statusCheckInfo.Name} MATCHED was {state} now {fingerprint.State}.");
+                return fingerprint.State;
             }
+
+            return statusCheckInfo.MissingValue;
         }
 
-        private bool HasStateValue(Fingerprint<T> fingerprint)
+        private bool CheckScreenForStatus(Fingerprint<T> fingerprint)
         {
             for (int i = 0; i < fingerprint.Points.Count; i++)
             {
@@ -84,7 +86,6 @@ namespace Cooldowns.Domain.Status
 
                 if (!Color.IsExactMatch(px, c))
                 {
-                    log.Debug($"FAILED at {p} with {px} looking for {c} not {fingerprint.State}");
                     return false;
                 }
             }
@@ -94,7 +95,7 @@ namespace Cooldowns.Domain.Status
 
         private void OnStatusChanged(T state)
         {
-            dispatcher.Invoke(() => StatusChanged?.Invoke(this, state));
+            dispatcher.BeginInvoke(() => StatusChanged?.Invoke(this, state));
         }
 
         public void Dispose()

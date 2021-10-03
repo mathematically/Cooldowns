@@ -1,8 +1,8 @@
 ﻿using System.Windows;
 using Cooldowns.Domain;
 using Cooldowns.Domain.Config;
+using Cooldowns.Domain.Factory;
 using Cooldowns.Domain.Keyboard;
-using Cooldowns.Factory;
 using Cooldowns.Windows;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
