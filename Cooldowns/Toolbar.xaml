@@ -52,7 +52,6 @@
     </Window.DataContext>
     <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch">
         <UniformGrid Rows="1">
-            <Button Name="SigilsStatusIndicator" Content="-" />
             <Button Name="ButtonQ" Content="Q" />
             <Button Name="ButtonW" Content="W" />
             <Button Name="ButtonE" Content="E" />

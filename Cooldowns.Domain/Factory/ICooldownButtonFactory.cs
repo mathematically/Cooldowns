@@ -7,7 +7,6 @@ namespace Cooldowns.Domain.Factory
 {
     public interface ICooldownButtonFactory
     {
-        CooldownButton? Create(KeyConfig config, ICooldownTimer cooldownTimer, Action<ButtonStateEventArgs> onToolbarButtonStateChanged, 
-            Action<ButtonModeEventArgs> onToolbarButtonModeChanged);
+        CooldownButton? Create(KeyConfig config, ICooldownTimer cooldownTimer, Action<ButtonStateEventArgs> onToolbarButtonStateChanged);
     }
 }

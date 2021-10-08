@@ -26,7 +26,7 @@ namespace Cooldowns.Domain.Buttons
 
         // Default is cooldown so we will get an event when we first detect an available pixel.
         private CooldownButtonState buttonState = CooldownButtonState.Cooldown;
-        private CooldownButtonMode buttonMode = CooldownButtonMode.Manual;
+        private ButtonMode buttonMode = ButtonMode.Disabled;
 
         private bool isScreenActive;
         private bool isScreenAvailable;
@@ -51,7 +51,6 @@ namespace Cooldowns.Domain.Buttons
         public event EventHandler<ButtonModeEventArgs>? ButtonModeChanged;
 
         private VirtualKeyCode ActionKeyCode { get; }
-        public VirtualKeyCode ModeKeyCode { get; }
 
         public CooldownButton(IScreen screen, IKeyboard keyboard, IDispatcher dispatcher, ICooldownTimer cooldownTimer, KeyConfig config)
         {
@@ -63,12 +62,34 @@ namespace Cooldowns.Domain.Buttons
             this.config = config;
 
             ActionKeyCode = Enum.Parse<VirtualKeyCode>(config.ActionKey);
-            ModeKeyCode = Enum.Parse<VirtualKeyCode>(config.ModeKey);
 
+            Init(config.Mode);
             cooldownTimer.Ticked += OnTimerTicked;
+        }
 
-            OnButtonModeChanged(buttonMode);
-            OnButtonStateChanged(buttonState);
+        // todo private?
+
+        public void Init(ButtonMode mode)
+        {
+            switch (mode)
+            {
+                case ButtonMode.Disabled:
+                    log.Debug($"{config.ActionKey} disabled.");
+                    OnButtonModeChanged(ButtonMode.Disabled);
+                    break;
+                case ButtonMode.Manual:
+                    log.Debug($"Manual mode enabled for {config.ActionKey}");
+                    OnButtonModeChanged(ButtonMode.Manual);
+                    OnButtonStateChanged(CooldownButtonState.Ready);
+                    break;
+                case ButtonMode.AutoCast:
+                    log.Debug($"Autocast enabled for {config.ActionKey}");
+                    OnButtonModeChanged(ButtonMode.AutoCast);
+                    OnButtonStateChanged(CooldownButtonState.Ready);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
 
         private void OnButtonStateChanged(CooldownButtonState state)
@@ -79,7 +100,7 @@ namespace Cooldowns.Domain.Buttons
             dispatcher.BeginInvoke(() => ButtonStateChanged?.Invoke(this, new ButtonStateEventArgs(config.Label, buttonState)));
         }
 
-        private void OnButtonModeChanged(CooldownButtonMode mode)
+        private void OnButtonModeChanged(ButtonMode mode)
         {
             if (buttonMode == mode) return;
             log.Debug($"{config.ActionKey} {mode} was {buttonMode}");
@@ -87,53 +108,13 @@ namespace Cooldowns.Domain.Buttons
             dispatcher.BeginInvoke(() => ButtonModeChanged?.Invoke(this, new ButtonModeEventArgs(config.Label, buttonMode)));
         }
 
-        public void ChangeMode()
-        {
-            // Mode just cycles through the various options in a fixed sequence to keep the
-            // required UI to just a simple button. disabled -> manual -> autocast.
-            switch (buttonMode)
-            {
-                case CooldownButtonMode.Disabled:
-                    SetManualMode();
-                    break;
-                case CooldownButtonMode.Manual:
-                    SetAutocastMode();
-                    break;
-                case CooldownButtonMode.AutoCast:
-                    SetDisabledMode();
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
-
-        private void SetManualMode()
-        {
-            log.Debug($"Manual mode enabled for {config.ActionKey}");
-            OnButtonModeChanged(CooldownButtonMode.Manual);
-            OnButtonStateChanged(CooldownButtonState.Ready);
-        }
-
-        private void SetAutocastMode()
-        {
-            log.Debug($"Autocast enabled for {config.ActionKey}");
-            OnButtonModeChanged(CooldownButtonMode.AutoCast);
-            OnButtonStateChanged(CooldownButtonState.Ready);
-        }
-
-        private void SetDisabledMode()
-        {
-            log.Debug($"{config.ActionKey} disabled.");
-            OnButtonModeChanged(CooldownButtonMode.Disabled);
-        }
-
         private void OnTimerTicked(object? o, EventArgs eventArgs)
         {
-            if (buttonMode == CooldownButtonMode.Manual)
+            if (buttonMode == ButtonMode.Manual)
             {
                 ProcessManualCooldown();
             }
-            else if (buttonMode == CooldownButtonMode.AutoCast)
+            else if (buttonMode == ButtonMode.AutoCast)
             {
                 ProcessAutocastCooldown();
             }

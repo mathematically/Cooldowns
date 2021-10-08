@@ -60,26 +60,9 @@ namespace Cooldowns.Tests.Tests
         }
 
         [Fact]
-        public void Mode_changes_follows_expected_cycle()
-        {
-            ExpectedMode = CooldownButtonMode.AutoCast;
-            cooldownButton.ChangeMode();
-            CooldownTimer.Ticked += Raise.Event();
-
-            ExpectedMode = CooldownButtonMode.Disabled;
-            cooldownButton.ChangeMode();
-            CooldownTimer.Ticked += Raise.Event();
-
-            ExpectedMode = CooldownButtonMode.Manual;
-            cooldownButton.ChangeMode();
-            CooldownTimer.Ticked += Raise.Event();
-        }
-
-        [Fact]
         public void When_cooldown_expires_autocast_buttons_press_action_key()
         {
-            ExpectedMode = CooldownButtonMode.AutoCast;
-            cooldownButton.ChangeMode();
+            cooldownButton.Init(ButtonMode.AutoCast);
             SetButtonPixel(CooldownButton.SkillCooldownColor);
             CooldownTimer.Ticked += Raise.Event();
 

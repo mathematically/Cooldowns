@@ -19,13 +19,11 @@ namespace Cooldowns.Domain.Factory
             this.keyboard = keyboard;
         }
 
-        public CooldownButton? Create(KeyConfig config, ICooldownTimer cooldownTimer, Action<ButtonStateEventArgs> onToolbarButtonStateChanged, 
-            Action<ButtonModeEventArgs> onToolbarButtonModeChanged)
+        public CooldownButton? Create(KeyConfig config, ICooldownTimer cooldownTimer, Action<ButtonStateEventArgs> onToolbarButtonStateChanged)
         {
             var cooldownButton = new CooldownButton(screen, keyboard, dispatcher, cooldownTimer, config);
 
             cooldownButton.ButtonStateChanged += (_, args) => onToolbarButtonStateChanged(args);
-            cooldownButton.ButtonModeChanged += (_, args) => onToolbarButtonModeChanged(args);
 
             return cooldownButton;
         }

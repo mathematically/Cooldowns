@@ -47,13 +47,15 @@ namespace Cooldowns
             GoldenrodBrush.Freeze();
         }
 
-        private readonly ICooldownTimer gameCheckTimer;
+        private readonly ICooldownTimer timer;
         private readonly IKeyboardListener keyboardListener;
 
         private readonly ToolbarViewModel viewModel = new();
 
+        // todo add IButtonModel interface to tidy this up.
         // These are nullable as they might not be disabled completely in config.
         private readonly CooldownButton? q, w, e, r;
+        private string? sigilsOfHopeButtonName; // todo push down
         private readonly StatusChecker<SigilsOfHope>? sigilsOfHope;
 
         private readonly int buttonFontSize;
@@ -70,36 +72,63 @@ namespace Cooldowns
 
             DataContext = viewModel;
 
-            buttonFontSize = config.Value.Toolbar.ButtonFontSize;
             posX = config.Value.Toolbar.PosX;
             posY = config.Value.Toolbar.PosY;
+            buttonFontSize = config.Value.Toolbar.FontSize;
 
-            gameCheckTimer = new CooldownTimer(config.Value.PollIntervalMilliseconds);
+            timer = new CooldownTimer(config.Value.IntervalMilliseconds);
 
-            q = config.Value.Toolbar.QButton ? Create(ButtonQ, config.Value.Q, cooldownButtonFactory) : null;
-            w = config.Value.Toolbar.WButton ? Create(ButtonW, config.Value.W, cooldownButtonFactory) : null;
-            e = config.Value.Toolbar.EButton ? Create(ButtonE, config.Value.E, cooldownButtonFactory) : null;
-            r = config.Value.Toolbar.RButton ? Create(ButtonR, config.Value.R, cooldownButtonFactory) : null;
-
-            if (config.Value.Toolbar.SigilsOfHope)
-            {
-                sigilsOfHope = sigilsOfHopeFactory.Create(gameCheckTimer, OnSigilsOfHopeStatusChanged);
-                SigilsStatusIndicator.FontSize = config.Value.Toolbar.IndicatorFontSize;
-                SigilsStatusIndicator.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                SigilsStatusIndicator.Visibility = Visibility.Collapsed;
-            }
+            (q, sigilsOfHope) = CreateButton(ButtonQ, config.Value.Q, cooldownButtonFactory, sigilsOfHopeFactory);
+            (w, sigilsOfHope) = CreateButton(ButtonW, config.Value.W, cooldownButtonFactory, sigilsOfHopeFactory);
+            (e, sigilsOfHope) = CreateButton(ButtonE, config.Value.E, cooldownButtonFactory, sigilsOfHopeFactory);
+            (r, sigilsOfHope) = CreateButton(ButtonR, config.Value.R, cooldownButtonFactory, sigilsOfHopeFactory);
         }
 
-        private CooldownButton? Create(Button button, KeyConfig keyConfig, ICooldownButtonFactory cooldownButtonFactory)
+        private (CooldownButton? cooldownButton, StatusChecker<SigilsOfHope>? statusChecker) CreateButton(Button button, KeyConfig config, ICooldownButtonFactory cooldownButtonFactory, ISigilsOfHopeFactory sigilsOfHopeFactory)
         {
-            button.Content = keyConfig.Label;
+            SetAppearance(button, config);
+            return CreateButtonModel(config, cooldownButtonFactory, sigilsOfHopeFactory);
+        }
+
+        private void SetAppearance(Button button, KeyConfig config)
+        {
+            button.Content = config.Label;
             button.FontSize = buttonFontSize;
             button.Visibility = Visibility.Visible;
 
-            return cooldownButtonFactory.Create(keyConfig, gameCheckTimer, OnToolbarButtonStateChanged, OnToolbarButtonModeChanged);
+            switch (config.Mode)
+            {
+                case ButtonMode.Disabled:
+                    button.Visibility = Visibility.Hidden;
+                    break;
+                case ButtonMode.Manual:
+                    button.BorderBrush = BlackBrush;
+                    button.Foreground = BlackBrush;
+                    button.Background = GoldenrodBrush;
+                    break;
+                case ButtonMode.AutoCast:
+                    button.BorderBrush = BlackBrush;
+                    button.Foreground = GoldenrodBrush;
+                    button.Background = TransparentBrush;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private (CooldownButton? cooldownButton, StatusChecker<SigilsOfHope>? statusChecker) CreateButtonModel(KeyConfig config,
+            ICooldownButtonFactory cooldownButtonFactory, ISigilsOfHopeFactory sigilsOfHopeFactory)
+        {
+            switch (config.Type)
+            {
+                case ButtonType.Cooldown:
+                    return (cooldownButtonFactory.Create(config, timer, OnToolbarButtonStateChanged), null);
+                case ButtonType.SigilsOfHope:
+                    sigilsOfHopeButtonName = config.Label;
+                    return (null, sigilsOfHopeFactory.Create(timer, OnSigilsOfHopeStatusChanged));
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -167,53 +196,18 @@ namespace Cooldowns
 
         private Button GetButton(string buttonName)
         {
-            if (Equals(buttonName, ButtonQ.Content)) return ButtonQ;
-            if (Equals(buttonName, ButtonW.Content)) return ButtonW;
-            if (Equals(buttonName, ButtonE.Content)) return ButtonE;
-            if (Equals(buttonName, ButtonR.Content)) return ButtonR;
-
-            throw new ArgumentOutOfRangeException($"Could not find button with name {buttonName}");
-        }
-
-        private void OnToolbarButtonModeChanged(ButtonModeEventArgs args)
-        {
-            Button button = GetButton(args.Name);
-
-            string message = $"Button {args.Name} mode is now {args.Mode.ToString().ToUpper()}";
-            viewModel.StatusText = message;
-            log.Debug(message);
-
-            switch (args.Mode)
+            return buttonName switch
             {
-                case CooldownButtonMode.Disabled:
-                    // Button state changes visibility only, mode switches colours to keep the events completely separate.
-                    // Hence we don't use Visibility here but set everything transparent.
-                    button.BorderBrush = TransparentBrush;
-                    button.Foreground = TransparentBrush;
-                    button.Background = TransparentBrush;
-                    break;
-                case CooldownButtonMode.Manual:
-                    button.BorderBrush = BlackBrush;
-                    button.Foreground = BlackBrush;
-                    button.Background = GoldenrodBrush;
-                    break;
-                case CooldownButtonMode.AutoCast:
-                    button.BorderBrush = BlackBrush;
-                    button.Foreground = GoldenrodBrush;
-                    button.Background = TransparentBrush;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(args.Name, args.Mode, null);
-            }
+                "Q" => ButtonQ,
+                "W" => ButtonW,
+                "E" => ButtonE,
+                "R" => ButtonR,
+                _ => throw new ArgumentOutOfRangeException($"Could not find button with name {buttonName}")
+            };
         }
 
         private void OnKeyPressed(object? _, KeyPressArgs args)
         {
-            if (CheckModeKey(args.KeyCode, q)) return;
-            if (CheckModeKey(args.KeyCode, w)) return;
-            if (CheckModeKey(args.KeyCode, e)) return;
-            if (CheckModeKey(args.KeyCode, r)) return;
-
             switch (args.KeyCode)
             {
                 case VirtualKeyCode.SCROLL:
@@ -228,18 +222,13 @@ namespace Cooldowns
             }
         }
 
-        private static bool CheckModeKey(VirtualKeyCode pressedKeyCode, CooldownButton? cooldownButton)
-        {
-            if (cooldownButton == null || pressedKeyCode != cooldownButton.ModeKeyCode) return false;
-            cooldownButton.ChangeMode();
-            return true;
-        }
-
         private void OnSigilsOfHopeStatusChanged(SigilsOfHope state)
         {
-            SigilsStatusIndicator.Content = state switch
+            var button = GetButton(sigilsOfHopeButtonName ?? "");
+
+            button.Content = state switch
             {
-                SigilsOfHope.None => "-",
+                SigilsOfHope.None => sigilsOfHopeButtonName,
                 SigilsOfHope.One => "1",
                 SigilsOfHope.Two => "2",
                 SigilsOfHope.Three => "3",
@@ -250,7 +239,7 @@ namespace Cooldowns
 
         private void ToggleEnabled()
         {
-            if (gameCheckTimer.IsRunning())
+            if (timer.IsRunning())
             {
                 log.Debug($"App manually switched OFF at {DateTime.UtcNow}");
                 SwitchAppOff();
@@ -264,20 +253,20 @@ namespace Cooldowns
 
         private void SwitchAppOn()
         {
-            if (gameCheckTimer.IsRunning()) return;
-            gameCheckTimer.Start();
+            if (timer.IsRunning()) return;
+            timer.Start();
         }
 
         private void SwitchAppOff()
         {
-            if (!gameCheckTimer.IsRunning()) return;
-            gameCheckTimer.Stop();
+            if (!timer.IsRunning()) return;
+            timer.Stop();
         }
 
         private void OnClosed(object? sender, EventArgs args)
         {
-            gameCheckTimer.Stop();
-            gameCheckTimer.Dispose();
+            timer.Stop();
+            timer.Dispose();
 
             Automation.RemoveAutomationFocusChangedEventHandler(OnFocusChanged);
 

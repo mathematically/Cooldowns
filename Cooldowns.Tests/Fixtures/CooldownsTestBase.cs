@@ -19,7 +19,7 @@ namespace Cooldowns.Tests.Fixtures
         protected KeyConfig KeyConfig = new();
 
         protected CooldownButtonState ExpectedState = CooldownButtonState.Ready;
-        protected CooldownButtonMode ExpectedMode = CooldownButtonMode.Manual;
+        protected ButtonMode ExpectedMode = ButtonMode.Manual;
 
         protected void Configure()
         {
@@ -27,7 +27,6 @@ namespace Cooldowns.Tests.Fixtures
             {
                 Label = "Q",
                 ActionKey = "VK_Q",
-                ModeKey = "F5",
                 
                 DetectX = 100,
                 DetectY = 200,
